@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc:*)",
+      "Bash(node -e \"const {randomBytes} = require\\(''crypto''\\); console.log\\(randomBytes\\(32\\).toString\\(''hex''\\)\\)\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3001/profile)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3001/leaderboard)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/leaderboard)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/dashboard)"
+    ]
+  }
+}

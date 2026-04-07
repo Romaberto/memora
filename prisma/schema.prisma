@@ -1,0 +1,90 @@
+// SQLite for local dev. Switch DATABASE_URL to Postgres without schema changes.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// Shared “guest” row when the app runs without sign-in (see `lib/guest-user.ts`).
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+
+  quizRequests QuizRequest[]
+  quizSessions QuizSession[]
+}
+
+model QuizRequest {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title         String?
+  summaryText   String   @default("")
+  notes         String?
+  questionCount Int
+
+  topic         String
+  generatedQuiz String
+  /// True when the quiz body was the built-in sample (not OpenAI). Hidden from dashboard history.
+  usedFallback  Boolean  @default(false)
+
+  questions QuizQuestion[]
+  sessions  QuizSession[]
+
+  createdAt DateTime @default(now())
+}
+
+model QuizQuestion {
+  id            String      @id @default(cuid())
+  quizRequestId String
+  quizRequest   QuizRequest @relation(fields: [quizRequestId], references: [id], onDelete: Cascade)
+
+  order        Int
+  question     String
+  options      String
+  correctIndex Int
+  explanation  String
+
+  answers QuizAnswer[]
+}
+
+model QuizSession {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quizRequestId String
+  quizRequest   QuizRequest @relation(fields: [quizRequestId], references: [id], onDelete: Cascade)
+
+  score         Int
+  percentage    Float
+  rankName      String
+  questionCount Int
+  streakMax     Int         @default(0)
+  /// Wall-clock seconds from quiz start to submit (client-reported).
+  durationSeconds Int?
+
+  answers QuizAnswer[]
+
+  createdAt DateTime @default(now())
+}
+
+model QuizAnswer {
+  id             String       @id @default(cuid())
+  quizSessionId  String
+  quizSession    QuizSession  @relation(fields: [quizSessionId], references: [id], onDelete: Cascade)
+  quizQuestionId String
+  quizQuestion   QuizQuestion @relation(fields: [quizQuestionId], references: [id], onDelete: Cascade)
+
+  selectedIndex Int
+  isCorrect     Boolean
+
+  @@unique([quizSessionId, quizQuestionId])
+}
