@@ -1,11 +1,21 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
-import { join } from "path";
-import { randomUUID } from "crypto";
+/**
+ * csv-users.ts — User store (formerly CSV-backed, now Prisma/PostgreSQL).
+ *
+ * All exported types and function signatures are identical to the old CSV
+ * version so that the 8 importing files need minimal edits (just add await).
+ *
+ * Field mapping  CsvUser ↔ Prisma User
+ *   avatarUrl  ↔  image
+ *   nickname   ↔  nickname   (added to schema)
+ *   passwordHash ↔ passwordHash (added to schema)
+ *   createdAt  ↔  createdAt.toISOString()
+ */
 
-const DATA_DIR = join(process.cwd(), "data");
-const CSV_PATH = join(DATA_DIR, "users.csv");
-// v2 header — nickname and avatarUrl added between name and createdAt
-const HEADER = "id,email,passwordHash,name,nickname,avatarUrl,createdAt";
+import prisma from "./db";
+
+// ---------------------------------------------------------------------------
+// Types (kept identical so importers need only add "await")
+// ---------------------------------------------------------------------------
 
 export type CsvUser = {
   id: string;
@@ -22,125 +32,98 @@ export type CsvUserUpdate = Partial<
 >;
 
 // ---------------------------------------------------------------------------
-// CSV helpers
+// Internal helpers
 // ---------------------------------------------------------------------------
 
-/** Parse a single CSV line, respecting RFC-4180 double-quoted fields. */
-function parseLine(line: string): string[] {
-  const result: string[] = [];
-  let field = "";
-  let inQuotes = false;
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i]!;
-    if (ch === '"') {
-      if (inQuotes && line[i + 1] === '"') { field += '"'; i++; }
-      else inQuotes = !inQuotes;
-    } else if (ch === "," && !inQuotes) {
-      result.push(field); field = "";
-    } else {
-      field += ch;
-    }
-  }
-  result.push(field);
-  return result;
-}
+const SELECT = {
+  id: true,
+  email: true,
+  passwordHash: true,
+  name: true,
+  nickname: true,
+  image: true,
+  createdAt: true,
+} as const;
 
-function escapeField(value: string): string {
-  if (value.includes(",") || value.includes('"') || value.includes("\n")) {
-    return '"' + value.replace(/"/g, '""') + '"';
-  }
-  return value;
-}
+type Row = {
+  id: string;
+  email: string | null;
+  passwordHash: string | null;
+  name: string | null;
+  nickname: string | null;
+  image: string | null;
+  createdAt: Date;
+};
 
-function toLine(u: CsvUser): string {
-  return [
-    u.id, u.email, u.passwordHash, u.name,
-    u.nickname, u.avatarUrl, u.createdAt,
-  ].map(escapeField).join(",");
+function toUser(row: Row): CsvUser {
+  return {
+    id: row.id,
+    email: row.email ?? "",
+    passwordHash: row.passwordHash ?? "",
+    name: row.name ?? "",
+    nickname: row.nickname ?? "",
+    avatarUrl: row.image ?? "",
+    createdAt: row.createdAt.toISOString(),
+  };
 }
 
 // ---------------------------------------------------------------------------
-// File I/O
+// Public API  (same signatures as before, now async)
 // ---------------------------------------------------------------------------
 
-function ensureFile(): void {
-  if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
-  if (!existsSync(CSV_PATH)) writeFileSync(CSV_PATH, HEADER + "\n", "utf-8");
-}
-
-function readAll(): CsvUser[] {
-  ensureFile();
-  const lines = readFileSync(CSV_PATH, "utf-8")
-    .split("\n").map((l) => l.trim()).filter(Boolean);
-  if (lines.length <= 1) return [];
-
-  return lines.slice(1).map((line) => {
-    const p = parseLine(line);
-    const id        = p[0] ?? "";
-    const email     = p[1] ?? "";
-    const pwdHash   = p[2] ?? "";
-    const name      = p[3] ?? "";
-
-    // Backward-compat: old rows have 5 fields (no nickname / avatarUrl)
-    let nickname = "", avatarUrl = "", createdAt = "";
-    if (p.length >= 7) {
-      nickname  = p[4] ?? "";
-      avatarUrl = p[5] ?? "";
-      createdAt = p[6] ?? "";
-    } else {
-      createdAt = p[4] ?? "";
-    }
-
-    return { id, email, passwordHash: pwdHash, name, nickname, avatarUrl, createdAt };
+export async function findByEmail(email: string): Promise<CsvUser | null> {
+  const row = await prisma.user.findUnique({
+    where: { email: email.toLowerCase().trim() },
+    select: SELECT,
   });
+  return row ? toUser(row) : null;
 }
 
-function writeAll(users: CsvUser[]): void {
-  ensureFile();
-  writeFileSync(
-    CSV_PATH,
-    [HEADER, ...users.map(toLine)].join("\n") + "\n",
-    "utf-8",
-  );
+export async function findById(id: string): Promise<CsvUser | null> {
+  const row = await prisma.user.findUnique({
+    where: { id },
+    select: SELECT,
+  });
+  return row ? toUser(row) : null;
 }
 
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
-
-export function findByEmail(email: string): CsvUser | null {
-  return readAll().find((u) => u.email.toLowerCase() === email.toLowerCase()) ?? null;
-}
-
-export function findById(id: string): CsvUser | null {
-  return readAll().find((u) => u.id === id) ?? null;
-}
-
-export function createCsvUser(
+export async function createCsvUser(
   email: string,
   passwordHash: string,
   name: string,
-): CsvUser {
-  const user: CsvUser = {
-    id: randomUUID(),
-    email: email.toLowerCase().trim(),
-    passwordHash,
-    name: name.trim(),
-    nickname: "",
-    avatarUrl: "",
-    createdAt: new Date().toISOString(),
-  };
-  writeAll([...readAll(), user]);
-  return user;
+): Promise<CsvUser> {
+  const row = await prisma.user.create({
+    data: {
+      email: email.toLowerCase().trim(),
+      passwordHash,
+      name: name.trim(),
+      nickname: "",
+      image: "",
+    },
+    select: SELECT,
+  });
+  return toUser(row);
 }
 
-/** Partially update a user row. Returns the updated row or null if not found. */
-export function updateUser(id: string, updates: CsvUserUpdate): CsvUser | null {
-  const users = readAll();
-  const idx = users.findIndex((u) => u.id === id);
-  if (idx === -1) return null;
-  const updated = { ...users[idx]!, ...updates };
-  users[idx] = updated;
-  writeAll(users);
-  return updated;
+/** Partially update a user. Returns the updated row or null if not found. */
+export async function updateUser(
+  id: string,
+  updates: CsvUserUpdate,
+): Promise<CsvUser | null> {
+  // Map avatarUrl → image for Prisma
+  const { avatarUrl, ...rest } = updates;
+  const data: Record<string, string | undefined | null> = { ...rest };
+  if (avatarUrl !== undefined) data.image = avatarUrl || null;
+
+  try {
+    const row = await prisma.user.update({
+      where: { id },
+      data,
+      select: SELECT,
+    });
+    return toUser(row);
+  } catch {
+    // P2025 = record not found
+    return null;
+  }
 }

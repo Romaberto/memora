@@ -2,8 +2,7 @@ import { existsSync, unlinkSync, writeFileSync, mkdirSync } from "fs";
 import { join } from "path";
 import { NextResponse } from "next/server";
 import { getSessionUserId } from "@/lib/auth";
-import { findById, updateUser } from "@/lib/csv-users";
-import prisma from "@/lib/db";
+import { updateUser } from "@/lib/csv-users";
 
 const MAX_BYTES = 2 * 1024 * 1024; // 2 MB
 const ALLOWED: Record<string, string> = {
@@ -61,11 +60,8 @@ export async function POST(req: Request) {
   writeFileSync(join(AVATARS_DIR, filename), buffer);
 
   const avatarUrl = `/avatars/${filename}`;
-  updateUser(userId, { avatarUrl });
-
-  // Keep Prisma user.image in sync
-  await prisma.user.update({ where: { id: userId }, data: { image: avatarUrl } })
-    .catch(() => null);
+  // updateUser now writes directly to Prisma (image field) — no separate sync needed
+  await updateUser(userId, { avatarUrl });
 
   return NextResponse.json({ ok: true, avatarUrl });
 }
@@ -77,9 +73,7 @@ export async function DELETE() {
   if (!userId) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
 
   removeOldAvatar(userId);
-  updateUser(userId, { avatarUrl: "" });
-  await prisma.user.update({ where: { id: userId }, data: { image: null } })
-    .catch(() => null);
+  await updateUser(userId, { avatarUrl: "" });
 
   return NextResponse.json({ ok: true });
 }

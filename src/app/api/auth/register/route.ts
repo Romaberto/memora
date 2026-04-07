@@ -4,7 +4,6 @@ import { z } from "zod";
 import { findByEmail, createCsvUser } from "@/lib/csv-users";
 import { hashPassword } from "@/lib/password";
 import { createSessionToken, sessionCookieAttrs } from "@/lib/session";
-import prisma from "@/lib/db";
 
 const schema = z.object({
   name: z.string().min(1).max(100).trim(),
@@ -28,28 +27,21 @@ export async function POST(req: Request) {
 
   const { name, email, password } = parsed.data;
 
-  // Check uniqueness in CSV
-  if (findByEmail(email)) {
+  // Check uniqueness in DB
+  if (await findByEmail(email)) {
     return NextResponse.json(
       { error: "An account with this email already exists." },
       { status: 409 },
     );
   }
 
-  // Hash password and persist to CSV
+  // Hash password and persist — createCsvUser now writes directly to Prisma
   const passwordHash = hashPassword(password);
-  const csvUser = createCsvUser(email, passwordHash, name);
-
-  // Also create a matching Prisma User record (needed for quiz FK relations)
-  await prisma.user.upsert({
-    where: { email },
-    create: { id: csvUser.id, email, name },
-    update: { name },
-  });
+  const user = await createCsvUser(email, passwordHash, name);
 
   // Issue session cookie
-  const token = await createSessionToken(csvUser.id);
+  const token = await createSessionToken(user.id);
   cookies().set(sessionCookieAttrs(token));
 
-  return NextResponse.json({ ok: true, name: csvUser.name }, { status: 201 });
+  return NextResponse.json({ ok: true, name: user.name }, { status: 201 });
 }

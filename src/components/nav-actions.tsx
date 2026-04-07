@@ -11,7 +11,7 @@ async function getNavUser() {
   if (!token) return null;
   const userId = await verifySessionToken(token);
   if (!userId) return null;
-  return findById(userId);
+  return await findById(userId);
 }
 
 export async function NavActions() {

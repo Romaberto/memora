@@ -28,7 +28,7 @@ export async function POST(req: Request) {
 
   const { currentPassword, newPassword } = parsed.data;
 
-  const user = findById(userId);
+  const user = await findById(userId);
   if (!user) return NextResponse.json({ error: "User not found." }, { status: 404 });
 
   if (!verifyPassword(currentPassword, user.passwordHash)) {
@@ -42,6 +42,6 @@ export async function POST(req: Request) {
     );
   }
 
-  updateUser(userId, { passwordHash: hashPassword(newPassword) });
+  await updateUser(userId, { passwordHash: hashPassword(newPassword) });
   return NextResponse.json({ ok: true });
 }

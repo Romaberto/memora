@@ -306,7 +306,7 @@ export function DashboardView({
               Generate a quiz
             </p>
             <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
-              Paste your notes or a summary — we'll turn them into questions.
+              Paste your notes or a summary — we&apos;ll turn them into questions.
             </p>
           </div>
           {showDebug && (

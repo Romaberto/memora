@@ -4,7 +4,6 @@ import { z } from "zod";
 import { findByEmail } from "@/lib/csv-users";
 import { verifyPassword } from "@/lib/password";
 import { createSessionToken, sessionCookieAttrs } from "@/lib/session";
-import prisma from "@/lib/db";
 
 const schema = z.object({
   email: z.string().email().max(255).toLowerCase(),
@@ -26,25 +25,19 @@ export async function POST(req: Request) {
 
   const { email, password } = parsed.data;
 
-  const csvUser = findByEmail(email);
+  // findByEmail now queries Prisma directly — no separate CSV file
+  const user = await findByEmail(email);
   // Use the same generic message for both "not found" and "wrong password"
   // to avoid leaking which emails are registered.
-  if (!csvUser || !verifyPassword(password, csvUser.passwordHash)) {
+  if (!user || !verifyPassword(password, user.passwordHash)) {
     return NextResponse.json(
       { error: "Invalid email or password." },
       { status: 401 },
     );
   }
 
-  // Ensure the Prisma User record exists (guard against manual CSV edits)
-  await prisma.user.upsert({
-    where: { email },
-    create: { id: csvUser.id, email, name: csvUser.name },
-    update: { name: csvUser.name },
-  });
-
-  const token = await createSessionToken(csvUser.id);
+  const token = await createSessionToken(user.id);
   cookies().set(sessionCookieAttrs(token));
 
-  return NextResponse.json({ ok: true, name: csvUser.name });
+  return NextResponse.json({ ok: true, name: user.name });
 }

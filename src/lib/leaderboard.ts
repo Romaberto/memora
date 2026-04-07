@@ -1,9 +1,11 @@
 /**
  * Leaderboard aggregation.
  * Groups non-fallback QuizSession rows per user → sorts by total points desc.
+ *
+ * User display data (nickname, name, avatarUrl) is now fetched directly from
+ * the Prisma User table — the CSV layer no longer exists.
  */
 import prisma from "./db";
-import { findById } from "./csv-users";
 
 export type LeaderboardPeriod = "alltime" | "month" | "week";
 
@@ -64,27 +66,25 @@ export async function getLeaderboard(
     map.set(s.userId, a);
   }
 
-  // Pre-fetch Prisma User rows as fallback for userIds that have no CSV entry
-  // (e.g. legacy guest accounts created before the CSV auth system was added)
+  // Pre-fetch all relevant Prisma User rows in one query
   const allUserIds = Array.from(map.keys());
-  const prismaUsers = await prisma.user.findMany({
+  const users = await prisma.user.findMany({
     where: { id: { in: allUserIds } },
-    select: { id: true, name: true, image: true },
+    select: { id: true, name: true, nickname: true, image: true },
   });
-  const prismaUserMap = new Map(prismaUsers.map((u) => [u.id, u]));
+  const userMap = new Map(users.map((u) => [u.id, u]));
 
-  // Build entries, join with CSV user data (primary) or Prisma user data (fallback)
+  // Build entries
   const entries: Omit<LeaderboardEntry, "rank">[] = [];
 
   for (const [userId, a] of Array.from(map)) {
     if (a.totalPoints === 0) continue;
-    const csvUser    = findById(userId);
-    const prismaUser = prismaUserMap.get(userId);
+    const u = userMap.get(userId);
     entries.push({
       userId,
-      displayName : csvUser?.nickname || csvUser?.name || prismaUser?.name || "Player",
-      fullName    : csvUser?.name || prismaUser?.name || "",
-      avatarUrl   : csvUser?.avatarUrl || prismaUser?.image || "",
+      displayName : u?.nickname || u?.name || "Player",
+      fullName    : u?.name || "",
+      avatarUrl   : u?.image || "",
       totalPoints : a.totalPoints,
       quizCount   : a.quizCount,
       avgAccuracy : a.quizCount > 0 ? a.pctSum / a.quizCount : null,

@@ -6,7 +6,9 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3001/profile)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3001/leaderboard)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/leaderboard)",
-      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/dashboard)"
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/dashboard)",
+      "Bash(npx prisma:*)",
+      "Bash(npm run:*)"
     ]
   }
 }

@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSessionUserId } from "@/lib/auth";
-import { findById, updateUser } from "@/lib/csv-users";
-import prisma from "@/lib/db";
+import { updateUser } from "@/lib/csv-users";
 
 const schema = z.object({
   name: z.string().min(1).max(100).trim().optional(),
@@ -44,14 +43,9 @@ export async function PATCH(req: Request) {
   if (name) updates.name = name;
   if (nickname !== undefined) updates.nickname = nickname;
 
-  const updated = updateUser(userId, updates);
+  // updateUser now writes directly to Prisma — no separate sync needed
+  const updated = await updateUser(userId, updates);
   if (!updated) return NextResponse.json({ error: "User not found." }, { status: 404 });
-
-  // Keep Prisma in sync
-  await prisma.user.update({
-    where: { id: userId },
-    data: { name: updated.name },
-  }).catch(() => null);
 
   return NextResponse.json({ ok: true, name: updated.name, nickname: updated.nickname });
 }
