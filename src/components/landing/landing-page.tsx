@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 
@@ -89,6 +90,17 @@ export function LandingPage() {
             transition={{ duration: 0.6 }}
             className="max-w-3xl"
           >
+            {/* Logo */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5 }}
+              className="mb-8 flex items-center gap-3"
+            >
+              <Image src="/logo.png" alt="Memora" width={64} height={64} className="rounded-2xl shadow-glow-md animate-float" />
+              <span className="text-3xl font-extrabold gradient-text">memora</span>
+            </motion.div>
+
             {/* Badge */}
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-green-500/20 bg-green-500/10 px-4 py-1.5 text-sm font-medium text-green-400">
               <span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />
