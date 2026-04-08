@@ -2,20 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Game-dark theme (always-on, ignores light/dark OS preference) ── */
 :root {
-  --background: 250 250 250;
-  --foreground: 15 23 42;
-  --muted: 100 116 139;
-  --card: 255 255 255;
-  --border: 226 232 240;
+  --background: 9 11 20;       /* #090B14 — deep space */
+  --foreground: 236 242 255;   /* #ECF2FF — cool white */
+  --muted:      107 120 155;   /* #6B789B — muted blue-grey */
+  --card:       15 17 32;      /* #0F1120 — card surface */
+  --border:     30 34 53;      /* #1E2235 — subtle border */
 }
 
 .dark {
-  --background: 15 23 42;
-  --foreground: 248 250 252;
-  --muted: 148 163 184;
-  --card: 30 41 59;
-  --border: 51 65 85;
+  --background: 9 11 20;
+  --foreground: 236 242 255;
+  --muted:      107 120 155;
+  --card:       15 17 32;
+  --border:     30 34 53;
 }
 
 html {
@@ -26,8 +27,52 @@ body {
   @apply bg-[rgb(var(--background))] text-[rgb(var(--foreground))] transition-colors duration-200;
 }
 
+/* ── Gradient text utility ── */
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-green-400 to-cyan-400 bg-clip-text text-transparent;
+  }
+
+  .gradient-text-r {
+    @apply bg-gradient-to-r from-cyan-400 to-green-400 bg-clip-text text-transparent;
+  }
+
+  /* Glassmorphism card */
+  .glass-card {
+    background: rgba(15, 17, 32, 0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(34, 197, 94, 0.08);
+    box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.06), 0 4px 24px rgba(0, 0, 0, 0.5);
+  }
+
+  .glass-card:hover {
+    border-color: rgba(34, 197, 94, 0.2);
+    box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.15), 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 20px rgba(34, 197, 94, 0.08);
+  }
+
+  /* Neon button glow */
+  .btn-glow {
+    box-shadow: 0 0 20px rgba(34, 197, 94, 0.4), 0 0 40px rgba(34, 197, 94, 0.15);
+  }
+
+  .btn-glow:hover {
+    box-shadow: 0 0 30px rgba(34, 197, 94, 0.6), 0 0 60px rgba(34, 197, 94, 0.2);
+  }
+
+  /* Subtle grid background */
+  .bg-grid {
+    background-image:
+      linear-gradient(rgba(30, 34, 53, 0.6) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(30, 34, 53, 0.6) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  /* XP / points badge */
+  .xp-badge {
+    @apply inline-flex items-center gap-1 rounded-full border border-green-500/20 bg-green-500/10 px-2.5 py-0.5 text-xs font-bold text-green-400;
   }
 }

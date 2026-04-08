@@ -134,7 +134,7 @@ export function DailyProgressDashboard({ sessions, subscriptionTier }: Props) {
             ) : (
               <span
                 className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-slate-400 dark:text-slate-500"
-                title="Included with Memorize Pro"
+                title="Included with Memora Pro"
               >
                 <LockIcon />
                 30 days
@@ -144,7 +144,7 @@ export function DailyProgressDashboard({ sessions, subscriptionTier }: Props) {
           {subscriptionTier === "free" ? (
             <p className="border-t border-slate-200 px-1 pb-0.5 pt-2 text-[11px] leading-snug text-slate-500 dark:border-slate-600 dark:text-slate-400">
               <span className="font-semibold text-slate-600 dark:text-slate-300">
-                Memorize Pro
+                Memora Pro
               </span>{" "}
               unlocks the 30-day view and deeper progress history.
             </p>

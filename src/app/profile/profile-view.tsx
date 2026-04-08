@@ -550,7 +550,7 @@ export function ProfileView({ user, stats }: Props) {
 
             <div className="mt-4 rounded-xl border border-accent/30 bg-accent/[0.05] p-4 dark:border-accent/40 dark:bg-accent/[0.08]">
               <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-                ✨ Memorize Pro
+                ✨ Memora Pro
                 <span className="ml-2 rounded-full bg-accent/20 px-2 py-0.5 text-xs font-medium text-accent">
                   Coming soon
                 </span>

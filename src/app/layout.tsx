@@ -17,9 +17,9 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Memorize — Turn reading into recall",
+  title: "Memora — Make Knowledge Stick",
   description:
-    "Generate multiple-choice quizzes from books, notes, and study materials. Train memory with retrieval practice.",
+    "Turn what you read into what you remember. AI-powered quizzes that train your memory with retrieval practice.",
 };
 
 export default function RootLayout({
