@@ -11,42 +11,35 @@ const config: Config = {
     extend: {
       colors: {
         accent: {
-          DEFAULT: "#22c55e",      // green-500 — matches logo
+          DEFAULT: "#10b981",      // emerald-500 — friendly green
           foreground: "#ffffff",
-          muted: "#052e16",        // dark green tint for backgrounds
-          light: "#4ade80",        // green-400 for gradients
+          muted: "#d1fae5",        // emerald-100
+          light: "#34d399",        // emerald-400
         },
         secondary: {
-          DEFAULT: "#06b6d4",      // cyan-500 — matches logo
+          DEFAULT: "#f59e0b",      // amber — warm & playful
           foreground: "#ffffff",
-          muted: "#164e63",
         },
-        game: {
-          bg:      "#090b14",      // near-black with blue tint
-          card:    "#0f1120",      // card background
-          "card-2":"#141728",      // slightly lighter card
-          border:  "#1e2235",      // subtle border
-          "border-bright": "#2a3050",
+        warm: {
+          bg:     "#FBF7F0",       // cream background
+          card:   "#FFFFFF",
+          border: "#E8E0D4",
+          "border-hover": "#D4CCC0",
         },
       },
       fontFamily: {
         sans: ["var(--font-geist-sans)", "system-ui", "sans-serif"],
         mono: ["var(--font-geist-mono)", "monospace"],
       },
-      backgroundImage: {
-        "gradient-brand": "linear-gradient(135deg, #22c55e 0%, #06b6d4 100%)",
-        "gradient-brand-r": "linear-gradient(135deg, #06b6d4 0%, #22c55e 100%)",
-        "gradient-dark": "linear-gradient(160deg, #090b14 0%, #0d1025 50%, #090b14 100%)",
-        "glow-green": "radial-gradient(circle, rgba(34,197,94,0.15) 0%, transparent 70%)",
-        "glow-cyan": "radial-gradient(circle, rgba(6,182,212,0.15) 0%, transparent 70%)",
+      borderRadius: {
+        "3xl": "1.5rem",
+        "4xl": "2rem",
       },
       boxShadow: {
-        "glow-sm":  "0 0 12px rgba(34, 197, 94, 0.25)",
-        "glow-md":  "0 0 24px rgba(34, 197, 94, 0.3)",
-        "glow-lg":  "0 0 48px rgba(34, 197, 94, 0.2)",
-        "glow-cyan":"0 0 24px rgba(6, 182, 212, 0.3)",
-        "card-game":"0 0 0 1px rgba(34,197,94,0.08), 0 4px 24px rgba(0,0,0,0.6)",
-        "card-hover":"0 0 0 1px rgba(34,197,94,0.25), 0 8px 32px rgba(0,0,0,0.7), 0 0 20px rgba(34,197,94,0.1)",
+        "soft":    "0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.04)",
+        "soft-md": "0 2px 8px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.06)",
+        "soft-lg": "0 4px 12px rgba(0,0,0,0.08), 0 16px 40px rgba(0,0,0,0.08)",
+        "pastel":  "0 2px 12px rgba(16,185,129,0.1)",
       },
       keyframes: {
         "score-pop": {
@@ -61,25 +54,21 @@ const config: Config = {
           "0%": { transform: "translateX(-100%)" },
           "100%": { transform: "translateX(350%)" },
         },
-        "glow-pulse": {
-          "0%, 100%": { opacity: "0.6" },
-          "50%": { opacity: "1" },
-        },
         float: {
           "0%, 100%": { transform: "translateY(0px)" },
-          "50%": { transform: "translateY(-10px)" },
+          "50%": { transform: "translateY(-8px)" },
         },
-        "border-spin": {
-          "100%": { transform: "rotate(360deg)" },
+        "bounce-soft": {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-4px)" },
         },
       },
       animation: {
         "score-pop": "score-pop 0.45s ease-out",
         shimmer: "shimmer 1.2s infinite",
         "generation-indeterminate": "generation-indeterminate 1.35s ease-in-out infinite",
-        "glow-pulse": "glow-pulse 3s ease-in-out infinite",
         float: "float 6s ease-in-out infinite",
-        "border-spin": "border-spin 4s linear infinite",
+        "bounce-soft": "bounce-soft 2s ease-in-out infinite",
       },
     },
   },

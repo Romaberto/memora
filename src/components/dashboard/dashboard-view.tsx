@@ -70,8 +70,8 @@ function StatPill({
     <div
       className={`flex min-w-[80px] flex-col rounded-xl border px-3 py-2 ${
         accent
-          ? "border-accent/40 bg-accent/[0.07] dark:bg-accent/[0.12]"
-          : "border-slate-200/80 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/40"
+          ? "border-accent/40 bg-accent/[0.07]"
+          : "border-[rgb(var(--border))] bg-[rgb(var(--background))]"
       }`}
     >
       <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
@@ -79,7 +79,7 @@ function StatPill({
       </span>
       <span
         className={`mt-0.5 text-sm font-bold tabular-nums leading-snug ${
-          accent ? "text-accent" : "text-slate-900 dark:text-white"
+          accent ? "text-accent" : "text-[rgb(var(--foreground))]"
         }`}
       >
         {value}
@@ -263,7 +263,7 @@ export function DashboardView({
   // ── render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8 px-4 py-8 sm:px-6">
+    <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6">
 
       {/* ── Page header + compact stat strip ──────────────────────────── */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

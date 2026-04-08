@@ -46,7 +46,7 @@ export async function NavActions() {
 
       <Link
         href="/leaderboard"
-        className="hidden text-sm font-medium text-slate-600 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-white sm:block"
+        className="hidden text-sm font-medium text-[rgb(var(--muted))] transition hover:text-[rgb(var(--foreground))] sm:block"
       >
         Leaderboard
       </Link>
@@ -54,7 +54,7 @@ export async function NavActions() {
       {/* Avatar + name → profile page */}
       <Link
         href="/profile"
-        className="group flex items-center gap-2 rounded-xl px-2 py-1 transition hover:bg-slate-100 dark:hover:bg-slate-800"
+        className="group flex items-center gap-2 rounded-xl px-2 py-1 transition hover:bg-black/5"
         title="Your profile"
       >
         <UserAvatar
@@ -62,7 +62,7 @@ export async function NavActions() {
           name={displayName}
           size="sm"
         />
-        <span className="hidden text-sm font-medium text-slate-700 group-hover:text-slate-900 dark:text-slate-300 dark:group-hover:text-white sm:block">
+        <span className="hidden text-sm font-medium text-[rgb(var(--muted))] group-hover:text-[rgb(var(--foreground))] sm:block">
           {displayName}
         </span>
       </Link>

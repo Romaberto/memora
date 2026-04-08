@@ -2,21 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Game-dark theme (always-on, ignores light/dark OS preference) ── */
+/* ── Warm, friendly, single light theme ── */
 :root {
-  --background: 9 11 20;       /* #090B14 — deep space */
-  --foreground: 236 242 255;   /* #ECF2FF — cool white */
-  --muted:      107 120 155;   /* #6B789B — muted blue-grey */
-  --card:       15 17 32;      /* #0F1120 — card surface */
-  --border:     30 34 53;      /* #1E2235 — subtle border */
+  --background: 251 247 240;   /* #FBF7F0 — warm cream */
+  --foreground: 26 26 46;      /* #1A1A2E — dark navy */
+  --muted:      139 134 150;   /* #8B8696 — warm grey */
+  --card:       255 255 255;   /* #FFFFFF — clean white */
+  --border:     232 224 212;   /* #E8E0D4 — warm border */
 }
 
+/* Override dark — force the same warm palette everywhere */
 .dark {
-  --background: 9 11 20;
-  --foreground: 236 242 255;
-  --muted:      107 120 155;
-  --card:       15 17 32;
-  --border:     30 34 53;
+  --background: 251 247 240;
+  --foreground: 26 26 46;
+  --muted:      139 134 150;
+  --card:       255 255 255;
+  --border:     232 224 212;
 }
 
 html {
@@ -27,52 +28,39 @@ body {
   @apply bg-[rgb(var(--background))] text-[rgb(var(--foreground))] transition-colors duration-200;
 }
 
-/* ── Gradient text utility ── */
 @layer utilities {
   .text-balance {
     text-wrap: balance;
   }
 
   .gradient-text {
-    @apply bg-gradient-to-r from-green-400 to-cyan-400 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-emerald-500 to-teal-500 bg-clip-text text-transparent;
   }
 
   .gradient-text-r {
-    @apply bg-gradient-to-r from-cyan-400 to-green-400 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-teal-500 to-emerald-500 bg-clip-text text-transparent;
   }
 
-  /* Glassmorphism card */
-  .glass-card {
-    background: rgba(15, 17, 32, 0.7);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(34, 197, 94, 0.08);
-    box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.06), 0 4px 24px rgba(0, 0, 0, 0.5);
+  /* Soft pastel card styles */
+  .card-soft {
+    @apply rounded-2xl border border-[rgb(var(--border))] bg-white shadow-sm;
+    transition: box-shadow 0.2s, border-color 0.2s;
   }
 
-  .glass-card:hover {
-    border-color: rgba(34, 197, 94, 0.2);
-    box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.15), 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 20px rgba(34, 197, 94, 0.08);
+  .card-soft:hover {
+    @apply shadow-md border-emerald-200;
   }
 
-  /* Neon button glow */
-  .btn-glow {
-    box-shadow: 0 0 20px rgba(34, 197, 94, 0.4), 0 0 40px rgba(34, 197, 94, 0.15);
-  }
+  /* Pastel accent backgrounds */
+  .bg-pastel-green  { background: #ECFDF5; }
+  .bg-pastel-blue   { background: #EFF6FF; }
+  .bg-pastel-yellow { background: #FFFBEB; }
+  .bg-pastel-pink   { background: #FFF1F2; }
+  .bg-pastel-purple { background: #FAF5FF; }
+  .bg-pastel-orange { background: #FFF7ED; }
 
-  .btn-glow:hover {
-    box-shadow: 0 0 30px rgba(34, 197, 94, 0.6), 0 0 60px rgba(34, 197, 94, 0.2);
-  }
-
-  /* Subtle grid background */
-  .bg-grid {
-    background-image:
-      linear-gradient(rgba(30, 34, 53, 0.6) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(30, 34, 53, 0.6) 1px, transparent 1px);
-    background-size: 40px 40px;
-  }
-
-  /* XP / points badge */
+  /* Friendly badge */
   .xp-badge {
-    @apply inline-flex items-center gap-1 rounded-full border border-green-500/20 bg-green-500/10 px-2.5 py-0.5 text-xs font-bold text-green-400;
+    @apply inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-600;
   }
 }

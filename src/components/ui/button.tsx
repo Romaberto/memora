@@ -4,13 +4,13 @@ type Variant = "primary" | "secondary" | "ghost" | "outline";
 
 const variants: Record<Variant, string> = {
   primary:
-    "bg-accent text-accent-foreground hover:bg-blue-700 focus-visible:ring-accent shadow-sm",
+    "bg-accent text-white hover:bg-emerald-600 focus-visible:ring-accent shadow-sm",
   secondary:
-    "bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white",
+    "bg-slate-800 text-white hover:bg-slate-700",
   ghost:
-    "bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-900 dark:text-slate-100",
+    "bg-transparent hover:bg-black/5 text-[rgb(var(--foreground))]",
   outline:
-    "border border-slate-200 bg-transparent hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800",
+    "border border-[rgb(var(--border))] bg-transparent hover:bg-black/[0.03] hover:border-[rgb(var(--foreground))]/20",
 };
 
 export const Button = forwardRef<
