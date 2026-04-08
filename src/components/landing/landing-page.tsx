@@ -97,8 +97,8 @@ export function LandingPage() {
               transition={{ duration: 0.5 }}
               className="mb-8 flex items-center gap-3"
             >
-              <Image src="/logo.png" alt="Memora" width={64} height={64} className="rounded-2xl shadow-glow-md animate-float" />
-              <span className="text-3xl font-extrabold gradient-text">memora</span>
+              <Image src="/logo.png" alt="Memora" width={120} height={120} className="mix-blend-screen animate-float" />
+              <span className="text-4xl font-extrabold gradient-text">memora</span>
             </motion.div>
 
             {/* Badge */}
