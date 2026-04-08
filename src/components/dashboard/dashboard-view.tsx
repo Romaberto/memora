@@ -347,20 +347,23 @@ export function DashboardView({
               >
                 Questions
               </label>
-              <select
-                id="count"
-                value={questionCount}
-                onChange={(e) =>
-                  setQuestionCount(Number(e.target.value) as QuestionCount)
-                }
-                className="h-[42px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none ring-accent/30 focus:ring-2 dark:border-slate-700 dark:bg-slate-900"
-              >
-                {QUESTION_COUNTS.map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </select>
+              <div className="relative">
+                <select
+                  id="count"
+                  value={questionCount}
+                  onChange={(e) =>
+                    setQuestionCount(Number(e.target.value) as QuestionCount)
+                  }
+                  className="h-[42px] w-full appearance-none rounded-xl border border-[rgb(var(--border))] bg-white px-3 py-2 pr-8 text-sm text-[rgb(var(--foreground))] outline-none ring-accent/30 focus:border-accent focus:ring-2"
+                >
+                  {QUESTION_COUNTS.map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+                <svg className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[rgb(var(--muted))]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></svg>
+              </div>
             </div>
           </div>
 

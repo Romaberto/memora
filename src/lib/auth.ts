@@ -5,15 +5,32 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SESSION_COOKIE, verifySessionToken } from "./session";
+import prisma from "./db";
 
 /**
  * Returns the authenticated userId, or null if there is no valid session.
- * Use this in API Route Handlers to return 401 when null.
+ * Also checks that the user actually exists in the DB — if the JWT is valid
+ * but the user was deleted or the DB changed, clears the stale cookie.
  */
 export async function getSessionUserId(): Promise<string | null> {
   const token = cookies().get(SESSION_COOKIE)?.value;
   if (!token) return null;
-  return verifySessionToken(token);
+
+  const userId = await verifySessionToken(token);
+  if (!userId) return null;
+
+  // Verify user actually exists in the database
+  const exists = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true },
+  });
+
+  if (!exists) {
+    // Stale session — user doesn't exist in DB
+    return null;
+  }
+
+  return userId;
 }
 
 /**

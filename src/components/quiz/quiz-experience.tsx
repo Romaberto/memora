@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { GenerationProgress } from "@/components/ui/generation-progress";
 import { encouragingMessage, rankFromPercentage } from "@/lib/ranks";
 import { describeFallbackReason } from "@/lib/fallback-notice";
@@ -12,7 +11,6 @@ import { recordQuizGenerationSeconds } from "@/lib/quiz-generation-timing";
 import { isQuestionCount } from "@/lib/schemas/quiz";
 import { applyDisplayShuffle } from "@/lib/shuffle-mcq";
 import { formatQuizClock } from "@/lib/format-quiz-clock";
-import { ROUND_LABELS, questionRoundPhase } from "@/lib/quiz-rounds";
 
 export type QuizQuestionClient = {
   id: string;
@@ -28,7 +26,6 @@ type Props = {
   initialQuizRequestId: string;
   topic: string;
   questions: QuizQuestionClient[];
-  /** Shown when this quiz was generated with the built-in sample instead of OpenAI */
   initialFallbackNotice?: string | null;
 };
 
@@ -61,10 +58,7 @@ export function QuizExperience({
     const k = sessionShuffleKeyRef.current;
     const maps: Record<string, number[]> = {};
     const out = raw.map((q) => {
-      const { display, displayToOriginal } = applyDisplayShuffle(
-        q,
-        `${q.id}:${k}`,
-      );
+      const { display, displayToOriginal } = applyDisplayShuffle(q, `${q.id}:${k}`);
       maps[q.id] = displayToOriginal;
       return display;
     });
@@ -72,13 +66,9 @@ export function QuizExperience({
     return out;
   }
 
-  const [fallbackNotice, setFallbackNotice] = useState<string | null>(
-    initialFallbackNotice,
-  );
+  const [fallbackNotice, setFallbackNotice] = useState<string | null>(initialFallbackNotice);
   const [quizRequestId, setQuizRequestId] = useState(initialQuizRequestId);
-  const [questions, setQuestions] = useState(() =>
-    prepareQuestionsFromRaw(initialQuestions),
-  );
+  const [questions, setQuestions] = useState(() => prepareQuestionsFromRaw(initialQuestions));
   const [topicState, setTopicState] = useState(topic);
 
   const [idx, setIdx] = useState(0);
@@ -104,27 +94,17 @@ export function QuizExperience({
   useEffect(() => {
     if (phase !== "take") return;
     const id = window.setInterval(() => {
-      setElapsedSec(
-        Math.floor((Date.now() - quizClockStartRef.current) / 1000),
-      );
+      setElapsedSec(Math.floor((Date.now() - quizClockStartRef.current) / 1000));
     }, 1000);
     return () => window.clearInterval(id);
   }, [phase]);
-
-  const roundPhase = q && total > 0 ? questionRoundPhase(idx, total) : 0;
-  const roundMeta = ROUND_LABELS[roundPhase]!;
-  const isBossRound = roundPhase === 3;
 
   const progressPct = useMemo(() => {
     if (total === 0) return 0;
     return Math.min(100, Math.round(((idx + (locked ? 1 : 0)) / total) * 100));
   }, [idx, locked, total]);
 
-  function resetRun(
-    nextQuestions: QuizQuestionClient[],
-    nextId: string,
-    nextTopic: string,
-  ) {
+  function resetRun(nextQuestions: QuizQuestionClient[], nextId: string, nextTopic: string) {
     sessionShuffleKeyRef.current += 1;
     canonicalQuestionsRef.current = nextQuestions;
     setQuizRequestId(nextId);
@@ -155,11 +135,10 @@ export function QuizExperience({
     const correct = i === q.correctIndex;
     if (correct) {
       const nextStreak = streak + 1;
-      const gain = POINTS;
-      setLastGain(gain);
+      setLastGain(POINTS);
       setStreak(nextStreak);
       setMaxStreak((m) => Math.max(m, nextStreak));
-      setScore((s) => s + gain);
+      setScore((s) => s + POINTS);
     } else {
       setStreak(0);
       setLastGain(null);
@@ -173,10 +152,7 @@ export function QuizExperience({
     setSaving(true);
     setSaveError(null);
     try {
-      const durationSeconds = Math.max(
-        1,
-        Math.floor((Date.now() - quizClockStartRef.current) / 1000),
-      );
+      const durationSeconds = Math.max(1, Math.floor((Date.now() - quizClockStartRef.current) / 1000));
       const map = displayToOriginalRef.current;
       const res = await fetch("/api/quiz/complete", {
         method: "POST",
@@ -187,22 +163,14 @@ export function QuizExperience({
           answers: questions.map((qq) => {
             const displayIdx = full[qq.id]!;
             const perm = map[qq.id];
-            const storedIdx =
-              perm && perm.length > 0 ? perm[displayIdx]! : displayIdx;
-            return {
-              quizQuestionId: qq.id,
-              selectedIndex: storedIdx,
-            };
+            const storedIdx = perm && perm.length > 0 ? perm[displayIdx]! : displayIdx;
+            return { quizQuestionId: qq.id, selectedIndex: storedIdx };
           }),
         }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setSaveError(
-          typeof data.error === "string"
-            ? data.error
-            : "Could not save your results. Please try again.",
-        );
+        setSaveError(typeof data.error === "string" ? data.error : "Could not save your results.");
         return;
       }
       setResult(data as ResultPayload);
@@ -233,8 +201,7 @@ export function QuizExperience({
   async function handleRegenerate() {
     setRegenLoading(true);
     setSaveError(null);
-    const startMs =
-      typeof performance !== "undefined" ? performance.now() : Date.now();
+    const startMs = typeof performance !== "undefined" ? performance.now() : Date.now();
     try {
       const res = await fetch("/api/regenerate-quiz", {
         method: "POST",
@@ -243,30 +210,16 @@ export function QuizExperience({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setSaveError(
-          typeof data.error === "string" ? data.error : "Regeneration failed.",
-        );
+        setSaveError(typeof data.error === "string" ? data.error : "Regeneration failed.");
         return;
       }
       const qs = (data.questions as QuizQuestionClient[]) ?? [];
-      const endMs =
-        typeof performance !== "undefined" ? performance.now() : Date.now();
-      const elapsedSec =
-        typeof performance !== "undefined"
-          ? (endMs - startMs) / 1000
-          : (endMs - startMs) / 1000;
-      if (isQuestionCount(total)) {
-        recordQuizGenerationSeconds(total, elapsedSec);
-      }
+      const endMs = typeof performance !== "undefined" ? performance.now() : Date.now();
+      const elapsed = (endMs - startMs) / 1000;
+      if (isQuestionCount(total)) recordQuizGenerationSeconds(total, elapsed);
 
       if (data.usedFallback) {
-        setFallbackNotice(
-          describeFallbackReason(
-            typeof data.fallbackReason === "string"
-              ? data.fallbackReason
-              : undefined,
-          ),
-        );
+        setFallbackNotice(describeFallbackReason(typeof data.fallbackReason === "string" ? data.fallbackReason : undefined));
       } else {
         setFallbackNotice(null);
       }
@@ -278,184 +231,123 @@ export function QuizExperience({
     }
   }
 
+  // ─── Empty state ───
   if (total === 0) {
     return (
-      <Card>
-        <p className="text-sm text-slate-600 dark:text-slate-300">
-          This quiz has no questions.{" "}
-          <Link href="/dashboard" className="font-medium text-accent underline">
-            Back to dashboard
-          </Link>
-        </p>
-      </Card>
+      <div className="rounded-2xl border border-[rgb(var(--border))] bg-white p-6 text-sm text-[rgb(var(--muted))]">
+        This quiz has no questions.{" "}
+        <Link href="/dashboard" className="font-medium text-accent underline">Back to dashboard</Link>
+      </div>
     );
   }
 
+  // ─── Results ───
   if (phase === "results" && result) {
     const localPct = Math.round(result.percentage);
     const displayRank = result.rankName || rankFromPercentage(localPct);
     const displayMsg = result.message || encouragingMessage(localPct);
 
     return (
-      <div className="space-y-8">
-        <Card className="relative overflow-hidden">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="text-center"
-          >
-            <p className="text-sm font-medium uppercase tracking-wide text-accent">
-              Quiz complete
+      <div className="mx-auto max-w-2xl space-y-6 py-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="rounded-2xl border border-[rgb(var(--border))] bg-white p-8 text-center shadow-soft"
+        >
+          <p className="text-sm font-semibold uppercase tracking-wider text-accent">Quiz complete</p>
+          <h1 className="mt-2 text-2xl font-bold">{topicState}</h1>
+
+          <p className="mt-6 text-6xl font-extrabold tabular-nums text-[rgb(var(--foreground))]">{localPct}%</p>
+          <p className="mt-1 text-sm text-[rgb(var(--muted))]">
+            {result.correct}/{total} correct · {result.score} pts
+            {result.durationSeconds != null ? ` · ${formatQuizClock(result.durationSeconds)}` : ""}
+            {result.streakMax > 1 ? ` · ${result.streakMax} streak` : ""}
+          </p>
+
+          <div className="mt-4 inline-block rounded-full bg-accent/10 px-4 py-1.5 text-sm font-bold text-accent">
+            {displayRank}
+          </div>
+
+          <p className="mx-auto mt-4 max-w-sm text-sm text-[rgb(var(--muted))]">{displayMsg}</p>
+
+          {result.sessionId ? (
+            <p className="mt-4 text-xs text-[rgb(var(--muted))]">
+              <Link href={`/dashboard/session/${result.sessionId}`} className="underline hover:text-accent">
+                Review detailed results
+              </Link>
             </p>
-            <h1 className="mt-2 text-3xl font-bold tracking-tight">
-              {topicState}
-            </h1>
-            <p className="mt-4 text-5xl font-bold tabular-nums">{localPct}%</p>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              {result.correct} / {total} correct · Score {result.score} pts
-              {result.durationSeconds != null
-                ? ` · Time ${formatQuizClock(result.durationSeconds)}`
-                : ""}
-              {result.streakMax > 1
-                ? ` · Best streak ${result.streakMax}`
-                : ""}
-            </p>
-            <p className="mt-2 text-lg font-semibold">{displayRank}</p>
-            <p className="mx-auto mt-4 max-w-md text-sm text-slate-600 dark:text-slate-300">
-              {displayMsg}
-            </p>
-            <div className="mx-auto mt-6 max-w-md rounded-xl border border-slate-200 bg-slate-50 p-4 text-left text-sm dark:border-slate-700 dark:bg-slate-800/50">
-              <p className="font-semibold text-slate-900 dark:text-white">
-                Performance summary
-              </p>
-              <ul className="mt-2 list-inside list-disc space-y-1 text-slate-600 dark:text-slate-300">
-                <li>
-                  Accuracy {localPct}% across {total} questions
-                </li>
-                <li>10 points per correct answer (no extra streak points).</li>
-                {result.streakMax > 1 ? (
-                  <li>Best answer streak this run: {result.streakMax}</li>
-                ) : null}
-                <li>Tier: {displayRank}</li>
-              </ul>
-            </div>
-            {result.sessionId ? (
-              <p className="mt-4 text-xs text-slate-400">
-                <Link
-                  href={`/dashboard/session/${result.sessionId}`}
-                  className="underline hover:text-accent"
-                >
-                  Review detailed results
-                </Link>
-              </p>
-            ) : null}
-          </motion.div>
-        </Card>
+          ) : null}
+        </motion.div>
 
         {regenLoading ? (
           <GenerationProgress
-            message="Generating new questions…"
-            questionCount={
-              isQuestionCount(total) ? total : undefined
-            }
-            className="rounded-xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-800/40"
+            message="Generating new questions..."
+            questionCount={isQuestionCount(total) ? total : undefined}
+            className="rounded-xl border border-[rgb(var(--border))] bg-white p-4"
           />
         ) : null}
 
         <div className="flex flex-wrap justify-center gap-3">
-          <Button
-            type="button"
-            disabled={regenLoading}
-            onClick={() =>
-              resetRun(
-                canonicalQuestionsRef.current,
-                quizRequestId,
-                topicState,
-              )
-            }
-          >
+          <Button type="button" disabled={regenLoading} onClick={() => resetRun(canonicalQuestionsRef.current, quizRequestId, topicState)}>
             Retry same quiz
           </Button>
           {wrongIds.length > 0 ? (
-            <Button
-              type="button"
-              variant="outline"
-              disabled={regenLoading}
-              onClick={() => {
-                const missed = canonicalQuestionsRef.current.filter((qq) =>
-                  wrongIds.includes(qq.id),
-                );
-                resetRun(missed, quizRequestId, `${topicState} — missed only`);
-              }}
-            >
+            <Button type="button" variant="outline" disabled={regenLoading} onClick={() => {
+              const missed = canonicalQuestionsRef.current.filter((qq) => wrongIds.includes(qq.id));
+              resetRun(missed, quizRequestId, `${topicState} — missed only`);
+            }}>
               Review missed ({wrongIds.length})
             </Button>
           ) : null}
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={regenLoading}
-            onClick={() => void handleRegenerate()}
-          >
-            {regenLoading ? "Regenerating…" : "New questions, same topic"}
+          <Button type="button" variant="secondary" disabled={regenLoading} onClick={() => void handleRegenerate()}>
+            {regenLoading ? "Regenerating..." : "New questions"}
           </Button>
           <Link href="/dashboard">
-            <Button type="button" variant="ghost" disabled={regenLoading}>
-              Generate a new quiz
-            </Button>
+            <Button type="button" variant="ghost" disabled={regenLoading}>New quiz</Button>
           </Link>
         </div>
       </div>
     );
   }
 
+  // ─── Quiz taking ───
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="mx-auto max-w-2xl space-y-5 py-4">
       {fallbackNotice ? (
-        <div
-          role="status"
-          className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100"
-        >
+        <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           <p className="font-semibold">Sample quiz (not from OpenAI)</p>
-          <p className="mt-1 opacity-90">{fallbackNotice}</p>
+          <p className="mt-1 opacity-80">{fallbackNotice}</p>
         </div>
       ) : null}
-      <div className="flex flex-wrap items-end justify-between gap-6">
-        <div className="min-w-0 flex-1">
-          <p className="text-sm text-slate-500 dark:text-slate-400">Topic</p>
-          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
-            {topicState}
-          </h1>
-        </div>
-        <div className="flex flex-wrap gap-8 sm:gap-10">
-          <div className="text-right">
-            <p className="text-sm text-slate-500 dark:text-slate-400">Score</p>
-            <motion.p
-              key={score}
-              initial={{ scale: 1.2 }}
-              animate={{ scale: 1 }}
-              className="text-2xl font-bold tabular-nums text-accent"
-            >
-              {score}
-            </motion.p>
-          </div>
-          <div className="text-right">
-            <p className="text-sm text-slate-500 dark:text-slate-400">Time</p>
-            <p className="font-mono text-2xl font-bold tabular-nums text-slate-200">
-              {formatQuizClock(elapsedSec)}
+
+      {/* ── Top bar: topic + stats ── */}
+      <div className="rounded-2xl border border-[rgb(var(--border))] bg-white px-5 py-4 shadow-soft">
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <p className="truncate text-base font-bold text-[rgb(var(--foreground))]">{topicState}</p>
+            <p className="mt-0.5 text-xs text-[rgb(var(--muted))]">
+              Question {idx + 1} of {total}
             </p>
           </div>
+          <div className="flex items-center gap-5">
+            <div className="text-center">
+              <motion.p key={score} initial={{ scale: 1.15 }} animate={{ scale: 1 }} className="text-lg font-bold tabular-nums text-accent">
+                {score}
+              </motion.p>
+              <p className="text-[10px] font-medium uppercase tracking-wide text-[rgb(var(--muted))]">pts</p>
+            </div>
+            <div className="h-8 w-px bg-[rgb(var(--border))]" />
+            <div className="text-center">
+              <p className="font-mono text-lg font-bold tabular-nums text-[rgb(var(--foreground))]">
+                {formatQuizClock(elapsedSec)}
+              </p>
+              <p className="text-[10px] font-medium uppercase tracking-wide text-[rgb(var(--muted))]">time</p>
+            </div>
+          </div>
         </div>
-      </div>
 
-      <div className="space-y-2">
-        <div className="flex justify-between text-xs font-medium text-slate-500 dark:text-slate-400">
-          <span>
-            Question {idx + 1} / {total}
-          </span>
-          <span>{progressPct}%</span>
-        </div>
-        <div className="h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+        {/* Progress bar */}
+        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-emerald-100">
           <motion.div
             className="h-full rounded-full bg-accent"
             initial={false}
@@ -465,149 +357,99 @@ export function QuizExperience({
         </div>
       </div>
 
-      {q ? (
-        <div
-          className={`rounded-2xl border px-4 py-3 sm:px-5 ${
-            isBossRound
-              ? "border-violet-500/55 bg-gradient-to-r from-violet-600/20 via-violet-500/10 to-transparent dark:border-violet-400/45"
-              : "border-slate-200/90 bg-slate-100/60 dark:border-slate-600 dark:bg-slate-800/50"
-          }`}
-        >
-          <div>
-            <p className="text-sm font-bold tracking-tight text-slate-900 dark:text-white">
-              {roundMeta.title}
-              {isBossRound ? " 👾" : ""}
-            </p>
-            <p className="text-xs text-slate-600 dark:text-slate-400">
-              {roundMeta.subtitle}
-            </p>
-          </div>
-        </div>
-      ) : null}
-
+      {/* ── Question card ── */}
       <AnimatePresence mode="wait">
         {q ? (
           <motion.div
             key={q.id}
-            initial={{ opacity: 0, x: 16 }}
+            initial={{ opacity: 0, x: 12 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -16 }}
-            transition={{ duration: 0.25 }}
+            exit={{ opacity: 0, x: -12 }}
+            transition={{ duration: 0.2 }}
           >
-            <Card
-              className={
-                isBossRound
-                  ? "ring-2 ring-violet-500/45 dark:ring-violet-400/35"
-                  : undefined
-              }
-            >
-              <p className="text-base font-medium leading-relaxed sm:text-lg">
+            <div className="rounded-2xl border border-[rgb(var(--border))] bg-white p-5 shadow-soft sm:p-6">
+              <p className="text-lg font-semibold leading-relaxed text-[rgb(var(--foreground))]">
                 {q.question}
               </p>
-              <div className="mt-6 grid gap-3 sm:grid-cols-2" role="group">
+
+              {/* Options */}
+              <div className="mt-5 grid gap-2.5 sm:grid-cols-2" role="group">
                 {q.options.map((opt, i) => {
                   const isPicked = picked === i;
                   const show = locked;
                   const isCorrect = i === q.correctIndex;
                   let cls =
-                    "w-full rounded-2xl border px-4 py-4 text-left text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ";
+                    "w-full rounded-xl border px-4 py-3.5 text-left text-sm font-medium transition-all ";
                   if (!show) {
-                    cls +=
-                      " border-slate-200 bg-white hover:border-accent/40 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800";
+                    cls += "border-[rgb(var(--border))] bg-white hover:border-accent/40 hover:bg-emerald-50/50 active:scale-[0.98]";
                   } else if (isCorrect) {
-                    cls += " border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40";
+                    cls += "border-emerald-400 bg-emerald-50 text-emerald-900";
                   } else if (isPicked) {
-                    cls += " border-rose-500 bg-rose-50 dark:bg-rose-950/40";
+                    cls += "border-rose-400 bg-rose-50 text-rose-900";
                   } else {
-                    cls += " border-slate-200 opacity-60 dark:border-slate-700";
+                    cls += "border-[rgb(var(--border))] opacity-50";
                   }
                   return (
-                    <motion.button
+                    <button
                       type="button"
                       key={i}
-                      whileTap={locked ? undefined : { scale: 0.98 }}
                       disabled={locked}
                       onClick={() => pickOption(i)}
                       className={cls}
                       aria-pressed={isPicked}
                     >
-                      <span className="mr-2 font-mono text-xs text-slate-400">
-                        {String.fromCharCode(65 + i)}.
+                      <span className="mr-2 inline-flex h-6 w-6 items-center justify-center rounded-md bg-[rgb(var(--background))] text-xs font-bold text-[rgb(var(--muted))]">
+                        {String.fromCharCode(65 + i)}
                       </span>
                       {opt}
-                    </motion.button>
+                    </button>
                   );
                 })}
               </div>
 
+              {/* Explanation */}
               {locked && picked !== null ? (
                 <motion.div
-                  initial={{ opacity: 0, y: 6 }}
+                  initial={{ opacity: 0, y: 4 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm dark:border-slate-700 dark:bg-slate-800/60"
+                  className="mt-5 rounded-xl bg-[rgb(var(--background))] p-4 text-sm"
                 >
-                  <p className="font-semibold text-slate-900 dark:text-white">
-                    {picked === q.correctIndex ? "Correct" : "Not quite"}
-                  </p>
-                  <p className="mt-1 text-slate-600 dark:text-slate-300">
-                    {q.explanation}
-                  </p>
-                  {picked === q.correctIndex && lastGain !== null ? (
-                    <motion.div
-                      aria-hidden
-                      className="pointer-events-none mt-3 flex justify-center"
-                      initial={{ scale: 0.5, opacity: 0 }}
-                      animate={{ scale: [0.5, 1.15, 1], opacity: 1 }}
-                      transition={{ duration: 0.45 }}
-                    >
-                      <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
-                        +{lastGain} pts
-                      </span>
-                    </motion.div>
-                  ) : picked !== q.correctIndex ? (
-                    <motion.div
-                      aria-hidden
-                      className="pointer-events-none mt-3 flex justify-center"
-                      initial={{ opacity: 0, y: 4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.25 }}
-                    >
-                      <span className="rounded-full bg-slate-200/80 px-3 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-700/80 dark:text-slate-300">
-                        0 pts
-                      </span>
-                    </motion.div>
-                  ) : null}
+                  <div className="flex items-center gap-2">
+                    <span className={`text-sm font-bold ${picked === q.correctIndex ? "text-emerald-600" : "text-rose-600"}`}>
+                      {picked === q.correctIndex ? "Correct!" : "Incorrect"}
+                    </span>
+                    {lastGain !== null ? (
+                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700">+{lastGain} pts</span>
+                    ) : null}
+                  </div>
+                  <p className="mt-1.5 leading-relaxed text-[rgb(var(--muted))]">{q.explanation}</p>
                 </motion.div>
               ) : null}
 
-              <div className="mt-8 flex justify-end gap-3">
+              {/* Next button */}
+              <div className="mt-5 flex justify-end">
                 <Button
                   type="button"
                   disabled={!locked || picked === null || saving}
                   onClick={goNext}
                 >
-                  {idx + 1 >= total ? (saving ? "Saving…" : "See results") : "Next question"}
+                  {idx + 1 >= total ? (saving ? "Saving..." : "See results") : "Next →"}
                 </Button>
               </div>
-            </Card>
+            </div>
           </motion.div>
         ) : null}
       </AnimatePresence>
 
       {saveError ? (
-        <div
-          role="alert"
-          className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-200"
-        >
+        <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
           {saveError}{" "}
           <button
             type="button"
             className="font-semibold underline"
             onClick={() => {
               setSaveError(null);
-              if (q && picked !== null) {
-                void submitAnswers({ ...committed, [q.id]: picked });
-              }
+              if (q && picked !== null) void submitAnswers({ ...committed, [q.id]: picked });
             }}
           >
             Retry save

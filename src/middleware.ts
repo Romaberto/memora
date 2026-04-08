@@ -1,32 +1,28 @@
 /**
- * Edge middleware:
- * - Protects /dashboard, /profile, /leaderboard → redirects to /login if not authed.
- * - Redirects /login, /register → /dashboard if already authed (no double sign-in).
+ * Edge middleware: protects /dashboard, /profile, /leaderboard.
+ * Redirects to /login if no valid session token.
  */
 import { type NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/session";
 
 export async function middleware(req: NextRequest) {
   const token = req.cookies.get(SESSION_COOKIE)?.value;
-  const userId = token ? await verifySessionToken(token) : null;
-  const path = req.nextUrl.pathname;
 
-  // Auth pages: redirect logged-in users to dashboard
-  if (path === "/login" || path === "/register") {
-    if (userId) {
-      return NextResponse.redirect(new URL("/dashboard", req.url));
-    }
-    return NextResponse.next();
+  if (!token) {
+    return NextResponse.redirect(new URL("/login", req.url));
   }
 
-  // Protected pages: redirect anonymous users to login
+  const userId = await verifySessionToken(token);
   if (!userId) {
-    return NextResponse.redirect(new URL("/login", req.url));
+    // Invalid/expired JWT — clear the cookie and redirect
+    const res = NextResponse.redirect(new URL("/login", req.url));
+    res.cookies.delete(SESSION_COOKIE);
+    return res;
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/profile", "/leaderboard", "/login", "/register"],
+  matcher: ["/dashboard/:path*", "/profile", "/leaderboard"],
 };

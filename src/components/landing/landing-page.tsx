@@ -116,7 +116,7 @@ export function LandingPage() {
               </p>
 
               <div className="mt-8 flex flex-wrap gap-3">
-                <Link href="/register">
+                <Link href="/dashboard">
                   <Button type="button" className="!px-7 !py-3 !text-base !rounded-2xl">
                     Start for free →
                   </Button>
@@ -129,15 +129,14 @@ export function LandingPage() {
               </div>
             </motion.div>
 
-            {/* Right — logo + visual */}
+            {/* Right — logo (desktop only) */}
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.6, delay: 0.15 }}
-              className="flex justify-center"
+              className="hidden justify-center lg:flex"
             >
               <div className="relative">
-                {/* Glow behind logo */}
                 <div className="absolute inset-0 scale-75 rounded-full bg-emerald-200/40 blur-[80px]" />
                 <Image
                   src="/logo.png"
@@ -297,7 +296,7 @@ export function LandingPage() {
             <p className="mx-auto mt-4 max-w-lg text-emerald-100">
               Join Memora and turn every study session into a game you want to play.
             </p>
-            <Link href="/register" className="mt-8 inline-block">
+            <Link href="/dashboard" className="mt-8 inline-block">
               <Button
                 type="button"
                 className="!bg-white !text-emerald-700 hover:!bg-emerald-50 !px-8 !py-3 !text-base !rounded-2xl !shadow-soft-md"
