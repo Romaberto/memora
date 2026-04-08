@@ -2,6 +2,7 @@ import prisma from "@/lib/db";
 import { requireUserId } from "@/lib/auth";
 import { rankFromPercentage } from "@/lib/ranks";
 import { getLeaderboard, findUserRank } from "@/lib/leaderboard";
+import { getUserSubscription, getDailyQuizCount } from "@/lib/subscription";
 import {
   DashboardView,
   type DashboardRequestRow,
@@ -16,7 +17,10 @@ export default async function DashboardPage() {
   const weekAgo      = new Date(Date.now() -  7 * 24 * 60 * 60 * 1000);
   const progressSince = new Date(Date.now() - 40 * 24 * 60 * 60 * 1000);
   const sessionHistoryWhere = { userId, quizRequest: nonFallbackRequest };
-  const subscriptionTier = process.env.MEMORIZE_PRO_SUBSCRIBER === "true" ? "pro" : "free";
+  const [subscriptionTier, dailyQuizCount] = await Promise.all([
+    getUserSubscription(userId),
+    getDailyQuizCount(userId),
+  ]);
 
   // Fetch all dashboard + leaderboard data in parallel
   const [guest, dashboardData, leaderboardEntries] = await Promise.all([
@@ -109,6 +113,8 @@ export default async function DashboardPage() {
       sessions={sessionRows}
       dailyProgressSessions={dailyProgressSessions}
       subscriptionTier={subscriptionTier}
+      dailyQuizCount={dailyQuizCount}
+      dailyQuizLimit={subscriptionTier === "free" ? 5 : Infinity}
       stats={{ totalSessions, avgPercentage: avgPct, sessionsLast7Days: recentCount, overallRank, avgSecondsPerQuestion, estimatedTenQuestionSeconds }}
       leaderboard={{ entries: leaderboardEntries, userRank, totalPlayers: leaderboardEntries.length }}
     />

@@ -542,7 +542,8 @@ export function ProfileView({ user, stats }: Props) {
             <div className="mt-4 space-y-2 text-sm text-slate-600 dark:text-slate-300">
               <p className="font-medium text-slate-800 dark:text-slate-100">What&apos;s included on Free:</p>
               <ul className="ml-4 list-disc space-y-1 text-sm text-slate-500 dark:text-slate-400">
-                <li>Unlimited quiz generation</li>
+                <li>5 quizzes per day</li>
+                <li>Up to 10 questions per quiz</li>
                 <li>7-day progress history</li>
                 <li>All rank tiers</li>
               </ul>
@@ -550,12 +551,14 @@ export function ProfileView({ user, stats }: Props) {
 
             <div className="mt-4 rounded-xl border border-accent/30 bg-accent/[0.05] p-4 dark:border-accent/40 dark:bg-accent/[0.08]">
               <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-                ✨ Memora Pro
+                Memora Pro
                 <span className="ml-2 rounded-full bg-accent/20 px-2 py-0.5 text-xs font-medium text-accent">
                   Coming soon
                 </span>
               </p>
               <ul className="mt-2 ml-4 list-disc space-y-1 text-xs text-slate-500 dark:text-slate-400">
+                <li>10 quizzes per day</li>
+                <li>Up to 50 questions per quiz</li>
                 <li>30-day progress history</li>
                 <li>Deeper session analytics</li>
                 <li>Priority AI generation</li>

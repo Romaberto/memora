@@ -4,10 +4,17 @@ import { getSessionUserId } from "@/lib/auth";
 import { createAIClient } from "@/lib/ai";
 import { generateQuizPayload, buildPromptBundle } from "@/lib/quiz-generator";
 import { generateQuizBodySchema } from "@/lib/schemas/quiz";
+import { getUserSubscription, canGenerateQuiz, isQuestionCountAllowed } from "@/lib/subscription";
 
 export async function POST(req: Request) {
   const userId = await getSessionUserId();
   if (!userId) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+
+  // Check daily quiz limit
+  const quota = await canGenerateQuiz(userId);
+  if (!quota.allowed) {
+    return NextResponse.json({ error: quota.reason, dailyLimitReached: true }, { status: 429 });
+  }
 
   let body: unknown;
   try {
@@ -26,6 +33,15 @@ export async function POST(req: Request) {
 
   const { title, summaryText, notes, questionCount, debugIncludePrompt } =
     parsed.data;
+
+  // Enforce question count limits based on subscription
+  const tier = await getUserSubscription(userId);
+  if (!isQuestionCountAllowed(tier, questionCount)) {
+    return NextResponse.json(
+      { error: "Upgrade to Pro to unlock more than 10 questions per quiz.", upgradeRequired: true },
+      { status: 403 },
+    );
+  }
 
   if (process.env.NODE_ENV === "development") {
     console.log("[generate-quiz] questionCount from client:", questionCount);

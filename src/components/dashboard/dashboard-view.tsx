@@ -117,6 +117,8 @@ type Props = {
   sessions: DashboardSessionRow[];
   dailyProgressSessions: SessionForDaily[];
   subscriptionTier: "free" | "pro";
+  dailyQuizCount: number;
+  dailyQuizLimit: number;
   stats: {
     totalSessions: number;
     avgPercentage: number | null;
@@ -147,6 +149,8 @@ export function DashboardView({
   sessions,
   dailyProgressSessions,
   subscriptionTier,
+  dailyQuizCount,
+  dailyQuizLimit,
   stats,
   leaderboard,
 }: Props) {
@@ -356,11 +360,14 @@ export function DashboardView({
                   }
                   className="h-[42px] w-full appearance-none rounded-xl border border-[rgb(var(--border))] bg-white px-3 py-2 pr-8 text-sm text-[rgb(var(--foreground))] outline-none ring-accent/30 focus:border-accent focus:ring-2"
                 >
-                  {QUESTION_COUNTS.map((n) => (
-                    <option key={n} value={n}>
-                      {n}
-                    </option>
-                  ))}
+                  {QUESTION_COUNTS.map((n) => {
+                    const locked = subscriptionTier === "free" && n > 10;
+                    return (
+                      <option key={n} value={n} disabled={locked}>
+                        {n}{locked ? " — Pro" : ""}
+                      </option>
+                    );
+                  })}
                 </select>
                 <svg className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[rgb(var(--muted))]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></svg>
               </div>
@@ -472,13 +479,29 @@ export function DashboardView({
             </div>
           ) : null}
 
+          {/* Daily limit indicator for free users */}
+          {subscriptionTier === "free" && (
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-[rgb(var(--muted))]">
+                {dailyQuizCount}/{dailyQuizLimit} free quizzes today
+              </span>
+              {dailyQuizCount >= dailyQuizLimit && (
+                <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-700">
+                  Limit reached
+                </span>
+              )}
+            </div>
+          )}
+
           {/* CTA — full-width, prominent */}
           <Button
             type="submit"
-            disabled={loading}
+            disabled={loading || (subscriptionTier === "free" && dailyQuizCount >= dailyQuizLimit)}
             className="w-full sm:w-auto sm:px-8"
           >
-            {loading ? "Generating…" : "Generate quiz →"}
+            {subscriptionTier === "free" && dailyQuizCount >= dailyQuizLimit
+              ? "Daily limit reached"
+              : loading ? "Generating…" : "Generate quiz →"}
           </Button>
         </form>
       </Card>
