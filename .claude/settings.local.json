@@ -17,7 +17,13 @@
       "WebFetch(domain:uxplanet.org)",
       "Bash(sed -i '' 's/Sign in to your Memorize account/Sign in to your Memora account/g' src/app/login/page.tsx)",
       "Bash(sed -i '' 's/✨ Memorize Pro/✨ Memora Pro/g' src/app/profile/profile-view.tsx)",
-      "Bash(sed -i '' 's/Memorize Pro/Memora Pro/g' src/components/dashboard/daily-progress-dashboard.tsx)"
+      "Bash(sed -i '' 's/Memorize Pro/Memora Pro/g' src/components/dashboard/daily-progress-dashboard.tsx)",
+      "Bash(ls /Users/roman/PycharmProjects/brandstrat/memorize/src/app/favicon* /Users/roman/PycharmProjects/brandstrat/memorize/src/app/icon* /Users/roman/PycharmProjects/brandstrat/memorize/public/favicon*)",
+      "Bash(npx sharp-cli:*)",
+      "Bash(npm ls:*)",
+      "Bash(npx sharp:*)",
+      "Bash(node -e \":*)",
+      "Bash(sips -z 64 64 public/logo.png --out src/app/icon.png)"
     ]
   }
 }

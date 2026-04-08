@@ -1,18 +1,25 @@
 /**
- * Edge middleware: protects all /dashboard routes.
- * Uses jose directly (Edge-compatible) — no Node.js APIs.
+ * Edge middleware:
+ * - Protects /dashboard, /profile, /leaderboard → redirects to /login if not authed.
+ * - Redirects /login, /register → /dashboard if already authed (no double sign-in).
  */
 import { type NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/session";
 
 export async function middleware(req: NextRequest) {
   const token = req.cookies.get(SESSION_COOKIE)?.value;
+  const userId = token ? await verifySessionToken(token) : null;
+  const path = req.nextUrl.pathname;
 
-  if (!token) {
-    return NextResponse.redirect(new URL("/login", req.url));
+  // Auth pages: redirect logged-in users to dashboard
+  if (path === "/login" || path === "/register") {
+    if (userId) {
+      return NextResponse.redirect(new URL("/dashboard", req.url));
+    }
+    return NextResponse.next();
   }
 
-  const userId = await verifySessionToken(token);
+  // Protected pages: redirect anonymous users to login
   if (!userId) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
@@ -21,5 +28,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/profile", "/leaderboard"],
+  matcher: ["/dashboard/:path*", "/profile", "/leaderboard", "/login", "/register"],
 };

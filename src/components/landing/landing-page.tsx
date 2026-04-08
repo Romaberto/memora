@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { NeuronNetwork } from "./neuron-network";
 
 const fade = {
   initial: { opacity: 0, y: 14 },
@@ -83,7 +84,10 @@ export function LandingPage() {
     <div className="overflow-x-hidden">
 
       {/* ── HERO ── */}
-      <section className="relative">
+      <section className="relative overflow-hidden">
+        {/* Animated neuron network */}
+        <NeuronNetwork className="opacity-60" />
+
         {/* Soft gradient blobs */}
         <div className="pointer-events-none absolute -top-20 right-0 h-[400px] w-[400px] rounded-full bg-emerald-100/50 blur-[100px]" />
         <div className="pointer-events-none absolute bottom-0 left-0 h-[300px] w-[300px] rounded-full bg-amber-100/40 blur-[80px]" />
@@ -134,13 +138,13 @@ export function LandingPage() {
             >
               <div className="relative">
                 {/* Glow behind logo */}
-                <div className="absolute inset-0 rounded-full bg-emerald-200/30 blur-[60px]" />
+                <div className="absolute inset-0 scale-75 rounded-full bg-emerald-200/40 blur-[80px]" />
                 <Image
                   src="/logo.png"
                   alt="Memora"
-                  width={340}
-                  height={340}
-                  className="relative animate-float drop-shadow-lg"
+                  width={360}
+                  height={360}
+                  className="relative animate-float mix-blend-multiply"
                   priority
                 />
               </div>

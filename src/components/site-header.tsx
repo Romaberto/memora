@@ -7,7 +7,7 @@ export function SiteHeader() {
     <header className="sticky top-0 z-40 border-b border-[rgb(var(--border))] bg-[rgb(var(--background))]/90 backdrop-blur-md">
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6">
         <Link href="/" className="flex items-center gap-2">
-          <Image src="/logo.png" alt="Memora" width={36} height={36} className="rounded-lg" />
+          <Image src="/logo.png" alt="Memora" width={32} height={32} className="mix-blend-multiply" />
           <span className="text-lg font-bold tracking-tight text-[rgb(var(--foreground))]">
             memora
           </span>
