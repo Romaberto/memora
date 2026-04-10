@@ -34,3 +34,11 @@ yarn-error.log*
 .vercel
 data/users.csv
 public/avatars/*
+
+# claude code + skills tooling
+.agents/
+.claude/skills/
+skills-lock.json
+
+# typescript incremental build cache
+tsconfig.tsbuildinfo

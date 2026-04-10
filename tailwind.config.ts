@@ -64,9 +64,9 @@ const config: Config = {
         },
       },
       animation: {
-        "score-pop": "score-pop 0.45s ease-out",
+        "score-pop": "score-pop 0.3s cubic-bezier(0.23, 1, 0.32, 1)",
         shimmer: "shimmer 1.2s infinite",
-        "generation-indeterminate": "generation-indeterminate 1.35s ease-in-out infinite",
+        "generation-indeterminate": "generation-indeterminate 1.1s cubic-bezier(0.65, 0, 0.35, 1) infinite",
         float: "float 6s ease-in-out infinite",
         "bounce-soft": "bounce-soft 2s ease-in-out infinite",
       },

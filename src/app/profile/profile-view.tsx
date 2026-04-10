@@ -227,7 +227,7 @@ export function ProfileView({ user, stats }: Props) {
     : null;
 
   const inputCls =
-    "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none ring-accent/30 transition focus:ring-2 dark:border-slate-700 dark:bg-slate-900";
+    "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none ring-accent/30 transition-[border-color,box-shadow] duration-150 ease-out focus:ring-2 dark:border-slate-700 dark:bg-slate-900";
 
   const msgCls = (ok: boolean) =>
     ok
@@ -242,7 +242,7 @@ export function ProfileView({ user, stats }: Props) {
         <div>
           <Link
             href="/dashboard"
-            className="mb-1 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-900 dark:hover:text-white"
+            className="mb-1 inline-flex items-center gap-1 text-sm text-slate-500 transition-colors duration-150 ease-out hover:text-slate-900 dark:hover:text-white"
           >
             ← Dashboard
           </Link>
@@ -288,7 +288,7 @@ export function ProfileView({ user, stats }: Props) {
                 {/* Camera overlay button */}
                 <label
                   htmlFor="avatar-file"
-                  className={`absolute -bottom-1 -right-1 cursor-pointer rounded-full border-2 border-white bg-accent p-1.5 text-white shadow-sm transition hover:bg-blue-700 dark:border-slate-900 ${
+                  className={`absolute -bottom-1 -right-1 cursor-pointer rounded-full border-2 border-white bg-accent p-1.5 text-white shadow-sm transition-[background-color,transform] duration-150 ease-out hover:bg-emerald-600 active:scale-95 dark:border-slate-900 ${
                     avatarLoading ? "pointer-events-none opacity-50" : ""
                   }`}
                   title="Change photo"
@@ -315,7 +315,7 @@ export function ProfileView({ user, stats }: Props) {
                 <button
                   type="button"
                   onClick={() => void handleRemoveAvatar()}
-                  className="text-xs text-slate-400 underline hover:text-rose-600"
+                  className="text-xs text-slate-400 underline transition-colors duration-150 ease-out hover:text-rose-600"
                 >
                   Remove photo
                 </button>

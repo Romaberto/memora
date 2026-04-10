@@ -252,6 +252,7 @@ export function QuizExperience({
         <motion.div
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
           className="rounded-2xl border border-[rgb(var(--border))] bg-white p-8 text-center shadow-soft"
         >
           <p className="text-sm font-semibold uppercase tracking-wider text-accent">Quiz complete</p>
@@ -331,7 +332,13 @@ export function QuizExperience({
           </div>
           <div className="flex items-center gap-5">
             <div className="text-center">
-              <motion.p key={score} initial={{ scale: 1.15 }} animate={{ scale: 1 }} className="text-lg font-bold tabular-nums text-accent">
+              <motion.p
+                key={score}
+                initial={{ scale: 1.15 }}
+                animate={{ scale: 1 }}
+                transition={{ duration: 0.18, ease: [0.23, 1, 0.32, 1] }}
+                className="text-lg font-bold tabular-nums text-accent"
+              >
                 {score}
               </motion.p>
               <p className="text-[10px] font-medium uppercase tracking-wide text-[rgb(var(--muted))]">pts</p>
@@ -352,7 +359,7 @@ export function QuizExperience({
             className="h-full rounded-full bg-accent"
             initial={false}
             animate={{ width: `${progressPct}%` }}
-            transition={{ type: "spring", stiffness: 120, damping: 20 }}
+            transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
           />
         </div>
       </div>
@@ -365,7 +372,7 @@ export function QuizExperience({
             initial={{ opacity: 0, x: 12 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -12 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: 0.18, ease: [0.23, 1, 0.32, 1] }}
           >
             <div className="rounded-2xl border border-[rgb(var(--border))] bg-white p-5 shadow-soft sm:p-6">
               <p className="text-lg font-semibold leading-relaxed text-[rgb(var(--foreground))]">
@@ -379,9 +386,9 @@ export function QuizExperience({
                   const show = locked;
                   const isCorrect = i === q.correctIndex;
                   let cls =
-                    "w-full rounded-xl border px-4 py-3.5 text-left text-sm font-medium transition-all ";
+                    "w-full rounded-xl border px-4 py-3.5 text-left text-sm font-medium transition-[border-color,background-color,transform,opacity] duration-150 ease-out ";
                   if (!show) {
-                    cls += "border-[rgb(var(--border))] bg-white hover:border-accent/40 hover:bg-emerald-50/50 active:scale-[0.98]";
+                    cls += "border-[rgb(var(--border))] bg-white hover:border-accent/40 hover:bg-emerald-50/50 active:scale-[0.97]";
                   } else if (isCorrect) {
                     cls += "border-emerald-400 bg-emerald-50 text-emerald-900";
                   } else if (isPicked) {
@@ -412,6 +419,7 @@ export function QuizExperience({
                 <motion.div
                   initial={{ opacity: 0, y: 4 }}
                   animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.16, ease: [0.23, 1, 0.32, 1] }}
                   className="mt-5 rounded-xl bg-[rgb(var(--background))] p-4 text-sm"
                 >
                   <div className="flex items-center gap-2">

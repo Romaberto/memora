@@ -1,16 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { NeuronNetwork } from "./neuron-network";
+import { HeroQuizDemo } from "./hero-quiz-demo";
+import { MetricStrip } from "./metric-strip";
+
+const EASE_OUT = [0.23, 1, 0.32, 1] as const;
 
 const fade = {
   initial: { opacity: 0, y: 14 },
   whileInView: { opacity: 1, y: 0 },
   viewport: { once: true, margin: "-40px" },
-  transition: { duration: 0.45 },
+  transition: { duration: 0.3, ease: EASE_OUT },
 };
 
 const features = [
@@ -86,36 +89,38 @@ export function LandingPage() {
       {/* ── HERO ── */}
       <section className="relative overflow-hidden">
         {/* Animated neuron network */}
-        <NeuronNetwork className="opacity-60" />
+        <NeuronNetwork className="opacity-40" />
 
         {/* Soft gradient blobs */}
         <div className="pointer-events-none absolute -top-20 right-0 h-[400px] w-[400px] rounded-full bg-emerald-100/50 blur-[100px]" />
         <div className="pointer-events-none absolute bottom-0 left-0 h-[300px] w-[300px] rounded-full bg-amber-100/40 blur-[80px]" />
 
-        <div className="relative mx-auto max-w-7xl px-4 pb-16 pt-12 sm:px-6 sm:pb-24 sm:pt-20">
-          <div className="grid items-center gap-12 lg:grid-cols-2">
+        <div className="relative mx-auto max-w-7xl px-4 pb-10 pt-8 sm:px-6 sm:pb-24 sm:pt-20">
+          <div className="grid items-center gap-8 sm:gap-12 lg:grid-cols-2">
             {/* Left — copy */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
+              transition={{ duration: 0.35, ease: EASE_OUT }}
             >
-              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-1.5 text-sm font-medium text-emerald-700">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                AI-powered memory training
+              <div className="mb-5 inline-flex max-w-full items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-1.5 text-sm font-medium text-emerald-700">
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="truncate">
+                  Quizzes <span className="font-bold">double</span> what you remember
+                </span>
               </div>
 
-              <h1 className="text-4xl font-extrabold leading-[1.15] tracking-tight text-[rgb(var(--foreground))] sm:text-5xl lg:text-6xl">
+              <h1 className="text-[2.25rem] font-extrabold leading-[1.1] tracking-tight text-[rgb(var(--foreground))] sm:text-5xl lg:text-6xl">
                 Make knowledge{" "}
                 <span className="gradient-text">stick.</span>
               </h1>
 
-              <p className="mt-5 max-w-lg text-lg leading-relaxed text-[rgb(var(--muted))]">
+              <p className="mt-4 max-w-lg text-base leading-relaxed text-[rgb(var(--muted))] sm:mt-5 sm:text-lg">
                 Turn anything you read into a quiz. Earn points, beat your scores,
                 and build real long-term memory — not just highlights.
               </p>
 
-              <div className="mt-8 flex flex-wrap gap-3">
+              <div className="mt-6 flex flex-wrap gap-3 sm:mt-8">
                 <Link href="/dashboard">
                   <Button type="button" className="!px-7 !py-3 !text-base !rounded-2xl">
                     Start for free →
@@ -129,37 +134,30 @@ export function LandingPage() {
               </div>
             </motion.div>
 
-            {/* Right — logo (desktop only) */}
+            {/* Right — live quiz demo */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.6, delay: 0.15 }}
-              className="hidden justify-center lg:flex"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.45, delay: 0.1, ease: EASE_OUT }}
+              className="flex justify-center lg:justify-end"
             >
-              <div className="relative">
-                <div className="absolute inset-0 scale-75 rounded-full bg-emerald-200/40 blur-[80px]" />
-                <Image
-                  src="/logo.png"
-                  alt="Memora"
-                  width={360}
-                  height={360}
-                  className="relative animate-float mix-blend-multiply"
-                  priority
-                />
-              </div>
+              <HeroQuizDemo />
             </motion.div>
           </div>
         </div>
       </section>
 
+      {/* ── METRIC STRIP — research-backed proof ── */}
+      <MetricStrip />
+
       {/* ── HOW IT WORKS ── */}
-      <section className="py-16 sm:py-24">
+      <section className="py-12 sm:py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <motion.div {...fade} className="mb-12 text-center">
-            <p className="mb-2 text-sm font-semibold uppercase tracking-widest text-emerald-600">
+          <motion.div {...fade} className="mb-8 text-center sm:mb-12">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-emerald-600 sm:text-sm">
               How it works
             </p>
-            <h2 className="text-3xl font-bold sm:text-4xl">
+            <h2 className="text-2xl font-bold sm:text-4xl">
               Three steps to remember more
             </h2>
           </motion.div>
@@ -169,7 +167,7 @@ export function LandingPage() {
               <motion.div
                 key={s.n}
                 {...fade}
-                transition={{ delay: i * 0.1 }}
+                transition={{ duration: 0.3, ease: EASE_OUT, delay: i * 0.06 }}
                 className="card-soft flex flex-col gap-3 rounded-2xl p-5"
               >
                 <span className={`flex h-10 w-10 items-center justify-center rounded-xl text-lg font-bold ${s.color}`}>
@@ -184,31 +182,31 @@ export function LandingPage() {
       </section>
 
       {/* ── FEATURES ── */}
-      <section className="py-16 sm:py-24">
+      <section className="py-12 sm:py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <motion.div {...fade} className="mb-12 text-center">
-            <p className="mb-2 text-sm font-semibold uppercase tracking-widest text-amber-600">
+          <motion.div {...fade} className="mb-8 text-center sm:mb-12">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-amber-600 sm:text-sm">
               Features
             </p>
-            <h2 className="text-3xl font-bold sm:text-4xl">
+            <h2 className="text-2xl font-bold sm:text-4xl">
               Built for serious learners
             </h2>
           </motion.div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
             {features.map((f, i) => (
               <motion.div
                 key={f.title}
                 {...fade}
-                transition={{ delay: i * 0.06 }}
-                className="card-soft group flex gap-4 rounded-2xl p-5"
+                transition={{ duration: 0.3, ease: EASE_OUT, delay: i * 0.05 }}
+                className="card-soft group flex flex-col gap-2 rounded-2xl p-4 sm:flex-row sm:gap-4 sm:p-5"
               >
-                <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-2xl ${f.iconBg}`}>
+                <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xl sm:h-12 sm:w-12 sm:text-2xl ${f.iconBg}`}>
                   {f.icon}
                 </span>
                 <div>
-                  <h3 className="text-sm font-bold">{f.title}</h3>
-                  <p className="mt-1 text-sm leading-relaxed text-[rgb(var(--muted))]">{f.body}</p>
+                  <h3 className="text-sm font-bold leading-snug">{f.title}</h3>
+                  <p className="mt-1 text-xs leading-relaxed text-[rgb(var(--muted))] sm:text-sm">{f.body}</p>
                 </div>
               </motion.div>
             ))}
@@ -217,26 +215,26 @@ export function LandingPage() {
       </section>
 
       {/* ── THE SCIENCE ── */}
-      <section className="py-16 sm:py-24">
+      <section className="py-12 sm:py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <motion.div
             {...fade}
-            className="overflow-hidden rounded-3xl border border-[rgb(var(--border))] bg-white p-6 shadow-soft sm:p-10"
+            className="overflow-hidden rounded-3xl border border-[rgb(var(--border))] bg-white p-5 shadow-soft sm:p-10"
           >
             <div className="max-w-2xl">
-              <p className="mb-2 text-sm font-semibold uppercase tracking-widest text-emerald-600">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-emerald-600 sm:text-sm">
                 The science
               </p>
-              <h2 className="text-2xl font-bold sm:text-3xl">
+              <h2 className="text-xl font-bold sm:text-3xl">
                 Why quizzes outperform re-reading
               </h2>
-              <p className="mt-4 leading-relaxed text-[rgb(var(--muted))]">
+              <p className="mt-3 text-sm leading-relaxed text-[rgb(var(--muted))] sm:mt-4 sm:text-base">
                 When you pull information out of memory rather than recognizing it,
                 you strengthen the neural pathways you will need later. Short questions
                 with immediate feedback let you correct mistakes early and reinforce recall.
               </p>
             </div>
-            <div className="mt-8 grid gap-3 sm:grid-cols-2">
+            <div className="mt-6 grid grid-cols-2 gap-2.5 sm:mt-8 sm:gap-3">
               {[
                 { label: "Retrieval over recognition", body: "Questions push you to produce answers, not just nod along.", bg: "bg-emerald-50" },
                 { label: "Feedback that teaches", body: "Explanations connect each choice back to the core idea.", bg: "bg-blue-50" },
@@ -245,10 +243,10 @@ export function LandingPage() {
               ].map((item) => (
                 <div
                   key={item.label}
-                  className={`rounded-xl ${item.bg} p-4`}
+                  className={`rounded-xl ${item.bg} p-3 sm:p-4`}
                 >
-                  <p className="text-sm font-semibold text-[rgb(var(--foreground))]">{item.label}</p>
-                  <p className="mt-1 text-xs leading-relaxed text-[rgb(var(--muted))]">{item.body}</p>
+                  <p className="text-xs font-semibold leading-snug text-[rgb(var(--foreground))] sm:text-sm">{item.label}</p>
+                  <p className="mt-1 text-[11px] leading-relaxed text-[rgb(var(--muted))] sm:text-xs">{item.body}</p>
                 </div>
               ))}
             </div>
@@ -257,23 +255,23 @@ export function LandingPage() {
       </section>
 
       {/* ── FAQ ── */}
-      <section className="py-16 sm:py-24">
+      <section className="py-12 sm:py-24">
         <div className="mx-auto max-w-3xl px-4 sm:px-6">
-          <motion.div {...fade} className="mb-10 text-center">
-            <h2 className="text-2xl font-bold sm:text-3xl">
+          <motion.div {...fade} className="mb-6 text-center sm:mb-10">
+            <h2 className="text-xl font-bold sm:text-3xl">
               Frequently asked questions
             </h2>
           </motion.div>
-          <div className="space-y-3">
+          <div className="space-y-2.5 sm:space-y-3">
             {faqs.map((f) => (
               <details
                 key={f.q}
-                className="group card-soft rounded-2xl px-5 py-4"
+                className="group card-soft rounded-2xl px-4 py-3.5 sm:px-5 sm:py-4"
               >
-                <summary className="cursor-pointer list-none text-base font-semibold outline-none marker:content-none [&::-webkit-details-marker]:hidden">
+                <summary className="cursor-pointer list-none text-sm font-semibold outline-none marker:content-none [&::-webkit-details-marker]:hidden sm:text-base">
                   <span className="flex items-center justify-between gap-4">
                     {f.q}
-                    <span className="text-emerald-500 transition-transform group-open:rotate-45">+</span>
+                    <span className="text-emerald-500 transition-transform duration-200 ease-out group-open:rotate-45">+</span>
                   </span>
                 </summary>
                 <p className="mt-3 text-sm leading-relaxed text-[rgb(var(--muted))]">{f.a}</p>
@@ -284,19 +282,19 @@ export function LandingPage() {
       </section>
 
       {/* ── CTA ── */}
-      <section className="pb-24 pt-8">
+      <section className="pb-16 pt-4 sm:pb-24 sm:pt-8">
         <div className="mx-auto max-w-4xl px-4 sm:px-6">
           <motion.div
             {...fade}
-            className="overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-500 to-teal-500 p-8 text-center text-white sm:p-14"
+            className="overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-500 to-teal-500 p-6 text-center text-white sm:p-14"
           >
-            <h2 className="text-3xl font-extrabold sm:text-4xl">
+            <h2 className="text-2xl font-extrabold sm:text-4xl">
               Ready to level up your memory?
             </h2>
-            <p className="mx-auto mt-4 max-w-lg text-emerald-100">
+            <p className="mx-auto mt-3 max-w-lg text-sm text-emerald-100 sm:mt-4 sm:text-base">
               Join Memora and turn every study session into a game you want to play.
             </p>
-            <Link href="/dashboard" className="mt-8 inline-block">
+            <Link href="/dashboard" className="mt-6 inline-block sm:mt-8">
               <Button
                 type="button"
                 className="!bg-white !text-emerald-700 hover:!bg-emerald-50 !px-8 !py-3 !text-base !rounded-2xl !shadow-soft-md"

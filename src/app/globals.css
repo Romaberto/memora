@@ -24,6 +24,32 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Reduced motion: keep opacity/color, kill decorative loops + transforms.
+   Per the skill: "fewer and gentler, not zero". */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  /* Stop infinite decorative loops */
+  .animate-float,
+  .animate-bounce-soft,
+  .animate-pulse,
+  .animate-shimmer,
+  .animate-generation-indeterminate {
+    animation: none !important;
+  }
+
+  /* Cap any remaining animation/transition durations to a near-zero blink
+     so motion-sensitive users still see state changes, just not movement. */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
 body {
   @apply bg-[rgb(var(--background))] text-[rgb(var(--foreground))] transition-colors duration-200;
 }

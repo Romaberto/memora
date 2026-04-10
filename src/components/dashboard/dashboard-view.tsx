@@ -341,7 +341,7 @@ export function DashboardView({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder='e.g. "Thinking, Fast and Slow" — chapters 1–3'
-                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none ring-accent/30 transition focus:ring-2 dark:border-slate-700 dark:bg-slate-900"
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none ring-accent/30 transition-[border-color,box-shadow] duration-150 ease-out focus:ring-2 dark:border-slate-700 dark:bg-slate-900"
               />
             </div>
             <div className="shrink-0">
@@ -392,7 +392,7 @@ export function DashboardView({
               onChange={(e) => setSummaryText(e.target.value)}
               rows={7}
               placeholder="Paste a book chapter, lecture notes, bullet points, or any material you want to quiz yourself on…"
-              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none ring-accent/30 transition focus:ring-2 dark:border-slate-700 dark:bg-slate-900"
+              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none ring-accent/30 transition-[border-color,box-shadow] duration-150 ease-out focus:ring-2 dark:border-slate-700 dark:bg-slate-900"
             />
           </div>
 
@@ -424,14 +424,14 @@ export function DashboardView({
                 onChange={(e) => setNotes(e.target.value)}
                 rows={3}
                 placeholder="Additional context or ideas to focus on during the quiz"
-                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none ring-accent/30 transition focus:ring-2 dark:border-slate-700 dark:bg-slate-900"
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none ring-accent/30 transition-[border-color,box-shadow] duration-150 ease-out focus:ring-2 dark:border-slate-700 dark:bg-slate-900"
               />
             </div>
           ) : (
             <button
               type="button"
               onClick={() => setShowNotes(true)}
-              className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+              className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-slate-500 transition-colors duration-150 ease-out hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
             >
               <PlusIcon />
               Add optional notes
@@ -525,7 +525,7 @@ export function DashboardView({
           </div>
           <Link
             href="/leaderboard"
-            className="shrink-0 text-xs font-medium text-accent underline hover:opacity-80"
+            className="shrink-0 text-xs font-medium text-accent underline transition-opacity duration-150 ease-out hover:opacity-80"
           >
             Full leaderboard →
           </Link>
@@ -599,7 +599,7 @@ export function DashboardView({
                     </div>
                     <button
                       type="button"
-                      className="shrink-0 rounded-lg p-1.5 text-slate-400 outline-none ring-accent/30 transition hover:bg-rose-50 hover:text-rose-600 focus-visible:ring-2 dark:hover:bg-rose-950/50 dark:hover:text-rose-400"
+                      className="shrink-0 rounded-lg p-1.5 text-slate-400 outline-none ring-accent/30 transition-colors duration-150 ease-out hover:bg-rose-50 hover:text-rose-600 focus-visible:ring-2 dark:hover:bg-rose-950/50 dark:hover:text-rose-400"
                       aria-label={`Remove quiz from history: ${r.topic}`}
                       disabled={removingId !== null}
                       onClick={() => void removeRequest(r.id)}

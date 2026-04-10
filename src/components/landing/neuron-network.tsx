@@ -25,6 +25,11 @@ export function NeuronNetwork({ className = "" }: { className?: string }) {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    // Respect prefers-reduced-motion: paint a single static frame, no rAF loop.
+    const prefersReducedMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
     function resize() {
       const dpr = window.devicePixelRatio || 1;
       const rect = canvas!.getBoundingClientRect();
@@ -89,7 +94,9 @@ export function NeuronNetwork({ className = "" }: { className?: string }) {
         ctx!.fill();
       }
 
-      animRef.current = requestAnimationFrame(animate);
+      if (!prefersReducedMotion) {
+        animRef.current = requestAnimationFrame(animate);
+      }
     }
 
     resize();

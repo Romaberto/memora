@@ -52,7 +52,7 @@ export function LeaderboardView({ entries, currentUserId, userRank, period }: Pr
         <div>
           <Link
             href="/dashboard"
-            className="mb-1 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-900 dark:hover:text-white"
+            className="mb-1 inline-flex items-center gap-1 text-sm text-slate-500 transition-colors duration-150 ease-out hover:text-slate-900 dark:hover:text-white"
           >
             ← Dashboard
           </Link>
@@ -87,7 +87,7 @@ export function LeaderboardView({ entries, currentUserId, userRank, period }: Pr
             key={p}
             type="button"
             onClick={() => setPeriod(p)}
-            className={`rounded-lg px-4 py-1.5 text-sm font-semibold transition ${
+            className={`rounded-lg px-4 py-1.5 text-sm font-semibold transition-[color,background-color,box-shadow] duration-150 ease-out active:scale-[0.97] ${
               p === period
                 ? "bg-white text-accent shadow-sm dark:bg-slate-800 dark:text-accent"
                 : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
@@ -151,7 +151,7 @@ export function LeaderboardView({ entries, currentUserId, userRank, period }: Pr
               return (
                 <li
                   key={e.userId}
-                  className={`grid grid-cols-[3rem_1fr_auto] items-center gap-x-4 px-4 py-3 sm:grid-cols-[3rem_1fr_7rem_6rem_6rem_5rem] ${
+                  className={`grid grid-cols-[3rem_1fr_auto] items-center gap-x-4 px-4 py-3 transition-colors duration-150 ease-out sm:grid-cols-[3rem_1fr_7rem_6rem_6rem_5rem] ${
                     isMe
                       ? "bg-accent/[0.06] dark:bg-accent/[0.10]"
                       : "hover:bg-slate-50 dark:hover:bg-slate-800/30"
