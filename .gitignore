@@ -38,6 +38,7 @@ public/avatars/*
 # claude code + skills tooling
 .agents/
 .claude/skills/
+.claude/settings.local.json
 skills-lock.json
 
 # typescript incremental build cache
