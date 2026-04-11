@@ -20,11 +20,27 @@ import {
   OAUTH_PKCE_COOKIE,
   OAUTH_STATE_COOKIE,
 } from "@/lib/google-oauth";
+import { getClientIp, ratelimitGoogleAuth } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: Request) {
+  // Per-IP rate limit on the OAuth start. Keyed by IP because the user is
+  // unauthenticated at this point — there's no userId to key on. Gracefully
+  // no-ops if Upstash isn't configured.
+  const ip = getClientIp(req);
+  const rl = await ratelimitGoogleAuth(`ip:${ip}`);
+  if (!rl.success) {
+    const loginUrl = new URL(
+      "/login?error=google_rate_limited",
+      process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+    );
+    const res = NextResponse.redirect(loginUrl);
+    res.headers.set("Retry-After", String(rl.retryAfterSeconds ?? 5));
+    return res;
+  }
+
   const env = getGoogleOAuthEnv();
   if (!env) {
     // Misconfigured — bounce back to login with an error code instead of crashing.

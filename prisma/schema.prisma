@@ -5,8 +5,15 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"   // was "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"   // was "sqlite"
+  // Pooled (PgBouncer) URL — used by the running app for queries.
+  // Required for serverless/Vercel — eliminates connection exhaustion.
+  url       = env("DATABASE_URL")
+  // Direct (non-pooled) URL — required by `prisma migrate dev/deploy`
+  // because PgBouncer in transaction mode doesn't support the prepared
+  // statements/locks Prisma uses for migrations. Falls back to DATABASE_URL
+  // if DIRECT_URL isn't set, so local dev keeps working without it.
+  directUrl = env("DIRECT_URL")
 }
 
 /// Shared “guest” row when the app runs without sign-in (see `lib/guest-user.ts`).

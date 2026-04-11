@@ -16,6 +16,7 @@ const OAUTH_ERROR_MESSAGES: Record<string, string> = {
   google_token_failed: "Couldn't verify your Google account. Please try again.",
   google_userinfo_failed: "Couldn't load your Google profile. Please try again.",
   google_email_unverified: "Your Google email isn't verified. Use a verified Google account or sign in with email and password.",
+  google_rate_limited: "Too many Google sign-in attempts. Please wait a moment and try again.",
 };
 
 export default function LoginPage() {

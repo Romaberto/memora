@@ -1,16 +1,52 @@
 import { NextResponse } from "next/server";
-import prisma from "@/lib/db";
 import { getSessionUserId } from "@/lib/auth";
 import { createAIClient } from "@/lib/ai";
 import { generateQuizPayload, buildPromptBundle } from "@/lib/quiz-generator";
 import { generateQuizBodySchema } from "@/lib/schemas/quiz";
-import { getUserSubscription, canGenerateQuiz, isQuestionCountAllowed } from "@/lib/subscription";
+import {
+  getUserSubscription,
+  canGenerateQuiz,
+  createQuizRequestWithQuota,
+  QuotaExceededError,
+  isQuestionCountAllowed,
+} from "@/lib/subscription";
+import { ratelimitGenerateQuiz } from "@/lib/rate-limit";
+
+// OpenAI generation can take 10–30s for larger quizzes — bump from the
+// default 15s ceiling so we don't 504 mid-call.
+export const runtime = "nodejs";
+export const maxDuration = 60;
 
 export async function POST(req: Request) {
   const userId = await getSessionUserId();
   if (!userId) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
 
-  // Check daily quiz limit
+  // Edge rate limit BEFORE any expensive work — burns no DB or OpenAI quota
+  // when the limit is exceeded. Keyed by userId (not IP) so legitimate users
+  // sharing an IP/NAT are not penalised. Gracefully no-ops if Upstash isn't
+  // configured.
+  const rl = await ratelimitGenerateQuiz(`user:${userId}`);
+  if (!rl.success) {
+    return NextResponse.json(
+      {
+        error: "Too many requests. Please slow down and try again in a moment.",
+        retryAfterSeconds: rl.retryAfterSeconds,
+      },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(rl.retryAfterSeconds ?? 5),
+          "X-RateLimit-Limit": String(rl.limit ?? ""),
+          "X-RateLimit-Remaining": String(rl.remaining ?? ""),
+        },
+      },
+    );
+  }
+
+  // Soft daily-quota check — fast, no lock. Avoids burning an OpenAI call
+  // for users who are already over their limit (the UI normally disables
+  // the button, but a curl request would skip that). The strict version
+  // runs as part of the create transaction below.
   const quota = await canGenerateQuiz(userId);
   if (!quota.allowed) {
     return NextResponse.json({ error: quota.reason, dailyLimitReached: true }, { status: 429 });
@@ -70,9 +106,13 @@ export async function POST(req: Request) {
       questionCount,
     });
 
-  const quizRequest = await prisma.quizRequest.create({
-    data: {
-      userId,
+  // Atomic create-with-quota: re-checks the daily count inside a SERIALIZABLE
+  // transaction so two concurrent requests can't both slip past the limit.
+  // Throws QuotaExceededError if the user used their last slot in another
+  // tab/request between the soft pre-check above and now.
+  let quizRequest;
+  try {
+    quizRequest = await createQuizRequestWithQuota(userId, {
       title: title?.trim() || null,
       summaryText: summaryText.trim(),
       notes: notes?.trim() || null,
@@ -80,23 +120,22 @@ export async function POST(req: Request) {
       topic: payload.topic,
       generatedQuiz: JSON.stringify(payload),
       usedFallback,
-      questions: {
-        create: payload.questions.map((q, idx) => ({
-          order: idx,
-          question: q.question,
-          options: JSON.stringify(q.options),
-          correctIndex: q.correctIndex,
-          explanation: q.explanation,
-        })),
-      },
-    },
-    include: { questions: { orderBy: { order: "asc" } } },
-  }).catch((err: unknown) => {
+      questions: payload.questions.map((q, idx) => ({
+        order: idx,
+        question: q.question,
+        options: JSON.stringify(q.options),
+        correctIndex: q.correctIndex,
+        explanation: q.explanation,
+      })),
+    });
+  } catch (err) {
+    if (err instanceof QuotaExceededError) {
+      return NextResponse.json(
+        { error: err.message, dailyLimitReached: true },
+        { status: 429 },
+      );
+    }
     console.error("[generate-quiz] Failed to persist quiz:", err);
-    return null;
-  });
-
-  if (!quizRequest) {
     return NextResponse.json({ error: "Failed to save quiz. Please try again." }, { status: 500 });
   }
 
