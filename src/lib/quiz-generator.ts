@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import type { AIClient } from "./ai";
+import type { AIClient, JsonSchema } from "./ai";
 import {
   type QuizPayload,
   quizPayloadSchema,
@@ -7,6 +7,76 @@ import {
   type QuestionCount,
 } from "./schemas/quiz";
 import { z } from "zod";
+
+/**
+ * OpenAI strict-mode JSON schema for the full quiz payload. The Zod schema in
+ * `schemas/quiz.ts` is the runtime source of truth — this mirrors its shape so
+ * the model is forced to emit valid JSON in one shot (no parse / shape retries).
+ *
+ * Strict-mode caveats: no `minItems`/`maxItems`/`minLength`. Array length and
+ * "EXACTLY 4 options" are still enforced via prompt + downstream validation.
+ */
+const QUIZ_JSON_SCHEMA: JsonSchema = {
+  name: "quiz_payload",
+  strict: true,
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    required: ["topic", "questions"],
+    properties: {
+      topic: { type: "string" },
+      questions: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["id", "question", "options", "correctIndex", "explanation"],
+          properties: {
+            id: { type: "string" },
+            question: { type: "string" },
+            options: {
+              type: "array",
+              items: { type: "string" },
+            },
+            correctIndex: { type: "integer" },
+            explanation: { type: "string" },
+          },
+        },
+      },
+    },
+  },
+};
+
+/** Top-up payload schema (subset of the full quiz schema). */
+const TOP_UP_JSON_SCHEMA: JsonSchema = {
+  name: "quiz_top_up",
+  strict: true,
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    required: ["questions"],
+    properties: {
+      questions: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["id", "question", "options", "correctIndex", "explanation"],
+          properties: {
+            id: { type: "string" },
+            question: { type: "string" },
+            options: {
+              type: "array",
+              items: { type: "string" },
+            },
+            correctIndex: { type: "integer" },
+            explanation: { type: "string" },
+          },
+        },
+      },
+    },
+  },
+};
 
 export const QUIZ_SYSTEM_PROMPT = `You are an expert learning designer who writes high-quality multiple-choice quizzes for retrieval practice.
 
@@ -96,7 +166,10 @@ function normalizeIds(payload: QuizPayload): QuizPayload {
   };
 }
 
-const QUIZ_MAX_ATTEMPTS = 5;
+// With OpenAI structured outputs, JSON / shape errors are no longer possible,
+// so the only failure modes left are network errors and the model returning
+// the wrong number of questions. 2 attempts is plenty.
+const QUIZ_MAX_ATTEMPTS = 2;
 
 const TOP_UP_SYSTEM_PROMPT = `You add questions to an existing multiple-choice quiz. Output one JSON object only (no markdown, no code fences).
 Shape: { "questions": [ ... ] } — nothing else at the top level.
@@ -138,7 +211,9 @@ async function tryTopUpToCount(
 ): Promise<QuizPayload | null> {
   const n = input.questionCount;
   let questions = normalizeIds(startPayload).questions;
-  const maxRounds = 4;
+  // With structured outputs the first call almost always returns the right
+  // count; 2 top-up rounds is enough to recover from a rare under-count.
+  const maxRounds = 2;
 
   for (let round = 0; round < maxRounds && questions.length < n; round++) {
     const need = n - questions.length;
@@ -167,6 +242,7 @@ async function tryTopUpToCount(
       raw = await ai.completeJson({
         system: TOP_UP_SYSTEM_PROMPT,
         user,
+        jsonSchema: TOP_UP_JSON_SCHEMA,
       });
     } catch (err) {
       logDev(`Top-up OpenAI request failed (round ${round + 1}):`, err);
@@ -273,6 +349,7 @@ export async function generateQuizPayload(
       raw = await ai.completeJson({
         system: QUIZ_SYSTEM_PROMPT,
         user: userPrompt + retryHint,
+        jsonSchema: QUIZ_JSON_SCHEMA,
       });
     } catch (err) {
       logDev(`OpenAI request failed (attempt ${attempt + 1}):`, err);
