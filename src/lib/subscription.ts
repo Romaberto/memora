@@ -3,7 +3,7 @@ import prisma from "./db";
 export type SubscriptionTier = "free" | "pro";
 
 const FREE_MAX_QUESTIONS = 10;
-const FREE_DAILY_QUIZ_LIMIT = 5;
+export const FREE_DAILY_QUIZ_LIMIT = 3;
 
 export async function getUserSubscription(userId: string): Promise<SubscriptionTier> {
   const user = await prisma.user.findUnique({

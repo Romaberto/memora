@@ -352,7 +352,7 @@ export function DashboardView({
                 Generate a quiz
               </p>
               <p className="mt-1 text-base font-bold text-[rgb(var(--foreground))] sm:text-lg">
-                Turn new notes into questions →
+                Drop in something new to remember →
               </p>
               <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
                 {subscriptionTier === "free"
