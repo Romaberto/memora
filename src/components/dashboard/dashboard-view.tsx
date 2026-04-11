@@ -55,22 +55,27 @@ function PlusIcon() {
   );
 }
 
-// ─── compact stat pill ────────────────────────────────────────────────────────
+// ─── stat pill — glanceable hero numbers ─────────────────────────────────────
 
 function StatPill({
   label,
   value,
   accent = false,
+  size = "md",
 }: {
   label: string;
   value: React.ReactNode;
   accent?: boolean;
+  size?: "md" | "lg";
 }) {
+  const isLarge = size === "lg";
   return (
     <div
-      className={`flex min-w-[80px] flex-col rounded-xl border px-3 py-2 ${
+      className={`flex flex-col rounded-xl border px-3 py-2.5 ${
+        isLarge ? "min-w-[104px]" : "min-w-[84px]"
+      } ${
         accent
-          ? "border-accent/40 bg-accent/[0.07]"
+          ? "border-accent/40 bg-gradient-to-br from-accent/[0.10] to-accent/[0.02]"
           : "border-[rgb(var(--border))] bg-[rgb(var(--background))]"
       }`}
     >
@@ -78,9 +83,9 @@ function StatPill({
         {label}
       </span>
       <span
-        className={`mt-0.5 text-sm font-bold tabular-nums leading-snug ${
-          accent ? "text-accent" : "text-[rgb(var(--foreground))]"
-        }`}
+        className={`mt-1 font-extrabold tabular-nums leading-none ${
+          isLarge ? "text-2xl sm:text-3xl" : "text-xl sm:text-2xl"
+        } ${accent ? "text-accent" : "text-[rgb(var(--foreground))]"}`}
       >
         {value}
       </span>
@@ -163,6 +168,11 @@ export function DashboardView({
   const [questionCount, setQuestionCount] = useState<QuestionCount>(10);
   const [showNotes, setShowNotes] = useState(false);
 
+  // Collapse the full generator for returning users — we expand when the user
+  // hits the "+ New quiz" trigger or prefills from history.
+  const hasHistory = sessions.length > 0 || requests.length > 0;
+  const [formExpanded, setFormExpanded] = useState<boolean>(!hasHistory);
+
   // open notes panel automatically when prefill sets a value
   useEffect(() => {
     if (notes.length > 0) setShowNotes(true);
@@ -174,25 +184,32 @@ export function DashboardView({
   const [debugPrompt, setDebugPrompt] = useState(false);
   const [debugPayload, setDebugPayload] = useState<string | null>(null);
 
-  // history state
-  const [removingId, setRemovingId] = useState<string | null>(null);
+  // history state — row-level undo (5s window before DELETE fires)
+  const [pendingRemovals, setPendingRemovals] = useState<Map<string, number>>(
+    () => new Map(),
+  );
   const [historyError, setHistoryError] = useState<string | null>(null);
+
+  // cancel any pending timeouts if the component unmounts
+  useEffect(() => {
+    return () => {
+      pendingRemovals.forEach((t) => window.clearTimeout(t));
+    };
+    // only runs on unmount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const showDebug = process.env.NODE_ENV === "development";
   const generateStartedMs = useRef<number>(0);
 
-  // derived pace labels
-  const pacePerQ =
-    stats.avgSecondsPerQuestion != null
-      ? formatDurationHuman(Math.round(stats.avgSecondsPerQuestion))
-      : null;
-
   // ── handlers ──────────────────────────────────────────────────────────────
 
-  async function removeRequest(id: string) {
-    if (removingId) return;
-    setHistoryError(null);
-    setRemovingId(id);
+  async function finalizeRemoval(id: string) {
+    setPendingRemovals((m) => {
+      const next = new Map(m);
+      next.delete(id);
+      return next;
+    });
     try {
       const res = await fetch(`/api/quiz-request/${encodeURIComponent(id)}`, {
         method: "DELETE",
@@ -204,9 +221,28 @@ export function DashboardView({
       router.refresh();
     } catch {
       setHistoryError("Network error while removing the quiz.");
-    } finally {
-      setRemovingId(null);
     }
+  }
+
+  function queueRemoval(id: string) {
+    if (pendingRemovals.has(id)) return;
+    setHistoryError(null);
+    const timeoutId = window.setTimeout(() => void finalizeRemoval(id), 5000);
+    setPendingRemovals((m) => {
+      const next = new Map(m);
+      next.set(id, timeoutId);
+      return next;
+    });
+  }
+
+  function undoRemoval(id: string) {
+    const t = pendingRemovals.get(id);
+    if (t != null) window.clearTimeout(t);
+    setPendingRemovals((m) => {
+      const next = new Map(m);
+      next.delete(id);
+      return next;
+    });
   }
 
   async function onGenerate(e: React.FormEvent) {
@@ -280,12 +316,13 @@ export function DashboardView({
           </p>
         </div>
 
-        {/* Stat pills — compact, right-aligned on desktop */}
+        {/* Stat pills — glanceable hero numbers, right-aligned on desktop */}
         <div className="flex flex-wrap gap-2 sm:justify-end">
           <StatPill
             label="Rank"
             value={stats.overallRank ?? "—"}
             accent={!!stats.overallRank}
+            size="lg"
           />
           <StatPill
             label="Avg score"
@@ -297,33 +334,72 @@ export function DashboardView({
           />
           <StatPill label="Quizzes" value={stats.totalSessions} />
           <StatPill label="This week" value={stats.sessionsLast7Days} />
-          {pacePerQ && <StatPill label="Pace / Q" value={`~${pacePerQ}`} />}
         </div>
       </div>
 
       {/* ── Generate quiz — hero card ──────────────────────────────────── */}
       <Card className="border-accent/40 bg-gradient-to-br from-accent/[0.06] via-transparent to-transparent dark:border-accent/50 dark:from-accent/[0.10]">
-        {/* Card header */}
-        <div className="mb-5 flex flex-col gap-0.5 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-accent">
-              Generate a quiz
-            </p>
-            <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
-              Paste your notes or a summary — we&apos;ll turn them into questions.
-            </p>
-          </div>
-          {showDebug && (
-            <label className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-              <input
-                type="checkbox"
-                checked={debugPrompt}
-                onChange={(e) => setDebugPrompt(e.target.checked)}
-              />
-              Debug prompt
-            </label>
-          )}
-        </div>
+        {!formExpanded ? (
+          // ── Collapsed state — returning users: quick-entry trigger ────
+          <button
+            type="button"
+            onClick={() => setFormExpanded(true)}
+            className="group flex w-full items-center justify-between gap-4 rounded-xl px-1 py-3 text-left outline-none transition-[transform] duration-150 ease-out active:scale-[0.99]"
+            aria-expanded={false}
+          >
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wide text-accent">
+                Generate a quiz
+              </p>
+              <p className="mt-1 text-base font-bold text-[rgb(var(--foreground))] sm:text-lg">
+                Turn new notes into questions →
+              </p>
+              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                {subscriptionTier === "free"
+                  ? `${dailyQuizCount}/${dailyQuizLimit} free quizzes today`
+                  : "Unlimited generations."}
+              </p>
+            </div>
+            <span className="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl bg-accent px-4 text-sm font-semibold text-white shadow-sm transition-transform duration-150 ease-out group-hover:bg-emerald-600 group-active:scale-[0.97]">
+              <PlusIcon />
+              New quiz
+            </span>
+          </button>
+        ) : (
+          <>
+            {/* Card header — expanded */}
+            <div className="mb-5 flex flex-col gap-0.5 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-accent">
+                  Generate a quiz
+                </p>
+                <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+                  Paste your notes or a summary — we&apos;ll turn them into questions.
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                {showDebug && (
+                  <label className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                    <input
+                      type="checkbox"
+                      checked={debugPrompt}
+                      onChange={(e) => setDebugPrompt(e.target.checked)}
+                    />
+                    Debug prompt
+                  </label>
+                )}
+                {hasHistory && !loading && (
+                  <button
+                    type="button"
+                    onClick={() => setFormExpanded(false)}
+                    className="rounded-lg px-2 py-1 text-xs font-medium text-slate-500 underline transition-colors duration-150 ease-out hover:text-slate-700 dark:hover:text-slate-200"
+                    aria-label="Collapse generator"
+                  >
+                    Collapse
+                  </button>
+                )}
+              </div>
+            </div>
 
         <form className="space-y-4" onSubmit={onGenerate}>
           {/* Title + question count in one row */}
@@ -341,7 +417,7 @@ export function DashboardView({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder='e.g. "Thinking, Fast and Slow" — chapters 1–3'
-                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none ring-accent/30 transition-[border-color,box-shadow] duration-150 ease-out focus:ring-2 dark:border-slate-700 dark:bg-slate-900"
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-base outline-none ring-accent/30 transition-[border-color,box-shadow] duration-150 ease-out focus:ring-2 dark:border-slate-700 dark:bg-slate-900 sm:text-sm"
               />
             </div>
             <div className="shrink-0">
@@ -358,7 +434,7 @@ export function DashboardView({
                   onChange={(e) =>
                     setQuestionCount(Number(e.target.value) as QuestionCount)
                   }
-                  className="h-[42px] w-full appearance-none rounded-xl border border-[rgb(var(--border))] bg-white px-3 py-2 pr-8 text-sm text-[rgb(var(--foreground))] outline-none ring-accent/30 focus:border-accent focus:ring-2"
+                  className="h-[46px] w-full appearance-none rounded-xl border border-[rgb(var(--border))] bg-white px-3 py-2 pr-8 text-base text-[rgb(var(--foreground))] outline-none ring-accent/30 focus:border-accent focus:ring-2 sm:h-[42px] sm:text-sm"
                 >
                   {QUESTION_COUNTS.map((n) => {
                     const locked = subscriptionTier === "free" && n > 10;
@@ -392,7 +468,7 @@ export function DashboardView({
               onChange={(e) => setSummaryText(e.target.value)}
               rows={7}
               placeholder="Paste a book chapter, lecture notes, bullet points, or any material you want to quiz yourself on…"
-              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none ring-accent/30 transition-[border-color,box-shadow] duration-150 ease-out focus:ring-2 dark:border-slate-700 dark:bg-slate-900"
+              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-base outline-none ring-accent/30 transition-[border-color,box-shadow] duration-150 ease-out focus:ring-2 dark:border-slate-700 dark:bg-slate-900 sm:text-sm"
             />
           </div>
 
@@ -424,7 +500,7 @@ export function DashboardView({
                 onChange={(e) => setNotes(e.target.value)}
                 rows={3}
                 placeholder="Additional context or ideas to focus on during the quiz"
-                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none ring-accent/30 transition-[border-color,box-shadow] duration-150 ease-out focus:ring-2 dark:border-slate-700 dark:bg-slate-900"
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-base outline-none ring-accent/30 transition-[border-color,box-shadow] duration-150 ease-out focus:ring-2 dark:border-slate-700 dark:bg-slate-900 sm:text-sm"
               />
             </div>
           ) : (
@@ -504,6 +580,8 @@ export function DashboardView({
               : loading ? "Generating…" : "Generate quiz →"}
           </Button>
         </form>
+          </>
+        )}
       </Card>
 
       {/* ── Daily progress ─────────────────────────────────────────────── */}
@@ -565,11 +643,11 @@ export function DashboardView({
 
       {/* ── History grid ───────────────────────────────────────────────── */}
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Input history */}
+        {/* Saved topics — quiz requests you created */}
         <Card>
-          <CardTitle>Input history</CardTitle>
+          <CardTitle>Saved topics</CardTitle>
           <p className="mt-1 text-xs text-slate-500">
-            Recent quiz requests you created.
+            Topics you can retry or reuse.
           </p>
           {historyError ? (
             <div
@@ -582,69 +660,84 @@ export function DashboardView({
           <ul className="mt-4 space-y-3">
             {requests.length === 0 ? (
               <li className="text-sm text-slate-500">
-                No requests yet. Generate your first quiz to see it here.
+                No topics yet. Generate your first quiz to see it here.
               </li>
             ) : (
-              requests.map((r) => (
-                <li
-                  key={r.id}
-                  className="flex flex-col gap-2 rounded-xl border border-slate-200/80 p-3 dark:border-slate-700"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium leading-snug">{r.topic}</p>
-                      <p className="text-xs text-slate-500">
-                        {formatDateTimeStable(r.createdAt)} · {r.questionCount} Q
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      className="shrink-0 rounded-lg p-1.5 text-slate-400 outline-none ring-accent/30 transition-colors duration-150 ease-out hover:bg-rose-50 hover:text-rose-600 focus-visible:ring-2 dark:hover:bg-rose-950/50 dark:hover:text-rose-400"
-                      aria-label={`Remove quiz from history: ${r.topic}`}
-                      disabled={removingId !== null}
-                      onClick={() => void removeRequest(r.id)}
-                    >
-                      {removingId === r.id ? (
-                        <span className="text-xs font-medium text-slate-500">…</span>
+              requests.map((r) => {
+                const isPending = pendingRemovals.has(r.id);
+                return (
+                  <li
+                    key={r.id}
+                    className={`flex flex-col gap-2 rounded-xl border border-slate-200/80 p-3 transition-opacity duration-200 ease-out dark:border-slate-700 ${
+                      isPending ? "opacity-50" : "opacity-100"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium leading-snug">{r.topic}</p>
+                        <p className="text-xs text-slate-500">
+                          {formatDateTimeStable(r.createdAt)} · {r.questionCount} Q
+                          {isPending ? " · removing…" : ""}
+                        </p>
+                      </div>
+                      {isPending ? (
+                        <button
+                          type="button"
+                          className="shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-accent underline outline-none ring-accent/30 transition-colors duration-150 ease-out hover:bg-accent/10 focus-visible:ring-2"
+                          aria-label={`Undo remove: ${r.topic}`}
+                          onClick={() => undoRemoval(r.id)}
+                        >
+                          Undo
+                        </button>
                       ) : (
-                        <TrashIcon />
+                        <button
+                          type="button"
+                          className="-m-1.5 shrink-0 rounded-lg p-2.5 text-slate-400 outline-none ring-accent/30 transition-colors duration-150 ease-out hover:bg-rose-50 hover:text-rose-600 focus-visible:ring-2 dark:hover:bg-rose-950/50 dark:hover:text-rose-400"
+                          aria-label={`Remove quiz from history: ${r.topic}`}
+                          onClick={() => queueRemoval(r.id)}
+                        >
+                          <TrashIcon />
+                        </button>
                       )}
-                    </button>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Link href={`/dashboard/quiz/${r.id}`}>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Link href={`/dashboard/quiz/${r.id}`}>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          className="!py-1.5 !text-xs"
+                          disabled={isPending}
+                        >
+                          Start quiz
+                        </Button>
+                      </Link>
                       <Button
                         type="button"
-                        variant="secondary"
+                        variant="outline"
                         className="!py-1.5 !text-xs"
+                        disabled={isPending}
+                        onClick={() => {
+                          setTitle(r.title ?? "");
+                          setSummaryText(r.summaryText ?? "");
+                          setNotes(r.notes ?? "");
+                          setQuestionCount(r.questionCount as QuestionCount);
+                          setFormExpanded(true);
+                          window.scrollTo({ top: 0, behavior: "smooth" });
+                        }}
                       >
-                        Start quiz
+                        Prefill form
                       </Button>
-                    </Link>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="!py-1.5 !text-xs"
-                      onClick={() => {
-                        setTitle(r.title ?? "");
-                        setSummaryText(r.summaryText ?? "");
-                        setNotes(r.notes ?? "");
-                        setQuestionCount(r.questionCount as QuestionCount);
-                        window.scrollTo({ top: 0, behavior: "smooth" });
-                      }}
-                    >
-                      Prefill form
-                    </Button>
-                  </div>
-                </li>
-              ))
+                    </div>
+                  </li>
+                );
+              })
             )}
           </ul>
         </Card>
 
-        {/* Completed quizzes */}
+        {/* Recent runs — completed quizzes */}
         <Card>
-          <CardTitle>Completed quizzes</CardTitle>
+          <CardTitle>Recent runs</CardTitle>
           <p className="mt-1 text-xs text-slate-500">
             Score, rank, and time per completed run.
           </p>

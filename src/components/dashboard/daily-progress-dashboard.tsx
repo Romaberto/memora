@@ -152,29 +152,46 @@ export function DailyProgressDashboard({ sessions, subscriptionTier }: Props) {
         </div>
       </div>
 
-      {/* Period achievements */}
-      <div className="mt-4 grid gap-3 sm:grid-cols-3">
-        <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/40">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+      {/* Period achievements — hero layout: Period points elevated */}
+      <div className="mt-4 grid gap-3 sm:grid-cols-[1.6fr_1fr_1fr]">
+        {/* Hero: Period points */}
+        <div className="rounded-2xl border border-accent/30 bg-gradient-to-br from-accent/10 via-accent/[0.04] to-transparent px-4 py-3 dark:border-accent/40 dark:from-accent/[0.18]">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-accent">
             Period points
           </p>
-          <p className="mt-0.5 text-xl font-bold tabular-nums text-accent">
+          <p className="mt-1 text-3xl font-extrabold tabular-nums leading-none text-accent sm:text-4xl">
             {totals.totalScore}
           </p>
+          {best && totals.sessionCount > 0 ? (
+            <p className="mt-2 text-[11px] leading-snug text-slate-600 dark:text-slate-400">
+              <span className="mr-1" aria-hidden>
+                👑
+              </span>
+              Best day{" "}
+              <span className="font-semibold text-slate-700 dark:text-slate-200">
+                {dayKeyShortLabel(best.key)}
+              </span>{" "}
+              · {best.totalScore} pts
+            </p>
+          ) : null}
         </div>
-        <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/40">
+
+        {/* Supporting: Quizzes */}
+        <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-800/40">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
             Quizzes
           </p>
-          <p className="mt-0.5 text-xl font-bold tabular-nums">
+          <p className="mt-1 text-2xl font-extrabold tabular-nums leading-none">
             {totals.sessionCount}
           </p>
         </div>
-        <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/40">
+
+        {/* Supporting: Avg score */}
+        <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-800/40">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
             Avg score
           </p>
-          <p className="mt-0.5 text-xl font-bold tabular-nums">
+          <p className="mt-1 text-2xl font-extrabold tabular-nums leading-none">
             {totals.avgPercentage != null
               ? `${Math.round(totals.avgPercentage)}%`
               : "—"}
@@ -182,58 +199,86 @@ export function DailyProgressDashboard({ sessions, subscriptionTier }: Props) {
         </div>
       </div>
 
-      {best && totals.sessionCount > 0 ? (
-        <p className="mt-3 text-xs text-slate-600 dark:text-slate-400">
-          <span className="font-semibold text-slate-700 dark:text-slate-200">
-            Best day:{" "}
-          </span>
-          {dayKeyShortLabel(best.key)} · {best.totalScore} pts
-        </p>
-      ) : null}
-
       {/* Bar chart + day filters */}
       <div className="mt-5">
-        <p className="mb-2 text-xs font-medium text-slate-500 dark:text-slate-400">
-          Daily score (points)
-        </p>
-        <div className="flex gap-1.5 overflow-x-auto pb-2 pt-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {dayKeys.map((key) => {
-            const b = buckets.get(key)!;
-            const h = Math.round((b.totalScore / maxBarScore) * 100);
-            const isSelected = selectedYmd === key;
-            const isToday = key === dayKeys[dayKeys.length - 1];
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() =>
-                  setSelectedYmd((prev) => (prev === key ? null : key))
-                }
-                className={`flex min-w-[2.75rem] flex-none flex-col items-center gap-1.5 rounded-xl border px-1 py-2 transition-[border-color,background-color,box-shadow] duration-150 ease-out active:scale-[0.97] ${
-                  isSelected
-                    ? "border-accent bg-accent/10 ring-2 ring-accent/30"
-                    : "border-transparent bg-slate-100/80 hover:border-slate-200 dark:bg-slate-800/50 dark:hover:border-slate-600"
-                }`}
-                aria-pressed={isSelected}
-                aria-label={`${dayKeyShortLabel(key)}${isToday ? ", today" : ""}, ${b.count} quizzes, ${b.totalScore} points`}
-              >
-                <span className="text-[10px] font-medium leading-none text-slate-500 dark:text-slate-400">
-                  {dayKeyShortLabel(key)}
-                </span>
-                <div className="flex h-24 w-full items-end justify-center px-0.5">
-                  <motion.div
-                    className="w-full max-w-[2rem] rounded-t-md bg-accent/85 dark:bg-accent"
-                    initial={false}
-                    animate={{ height: `${Math.max(h, b.count > 0 ? 8 : 4)}%` }}
-                    transition={{ type: "spring", stiffness: 200, damping: 22 }}
-                  />
-                </div>
-                <span className="text-[10px] font-semibold tabular-nums text-slate-700 dark:text-slate-200">
-                  {b.totalScore || "—"}
-                </span>
-              </button>
-            );
-          })}
+        <div className="mb-2 flex items-baseline justify-between">
+          <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+            Daily score (points)
+          </p>
+          {maxBarScore > 1 && totals.sessionCount > 0 ? (
+            <p className="text-[10px] font-medium tabular-nums text-slate-400">
+              Max {maxBarScore}
+            </p>
+          ) : null}
+        </div>
+
+        {/* Chart region — bars overlaid on subtle gridlines */}
+        <div className="relative">
+          {/* Gridlines (25 / 50 / 75 / 100% of max) */}
+          <div className="pointer-events-none absolute inset-x-0 bottom-[18px] top-[14px] flex flex-col-reverse justify-between" aria-hidden>
+            {[0, 0.25, 0.5, 0.75, 1].map((t) => (
+              <div
+                key={t}
+                className="h-px w-full bg-slate-200/70 dark:bg-slate-700/60"
+              />
+            ))}
+          </div>
+
+          <div className="relative flex gap-1.5 overflow-x-auto pb-2 pt-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {dayKeys.map((key) => {
+              const b = buckets.get(key)!;
+              const h = Math.round((b.totalScore / maxBarScore) * 100);
+              const isSelected = selectedYmd === key;
+              const isToday = key === dayKeys[dayKeys.length - 1];
+              const isBest =
+                !!best && best.key === key && b.totalScore > 0;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() =>
+                    setSelectedYmd((prev) => (prev === key ? null : key))
+                  }
+                  className={`relative flex min-w-[2.75rem] flex-none flex-col items-center gap-1.5 rounded-xl border px-1 py-2 transition-[border-color,background-color,box-shadow] duration-150 ease-out active:scale-[0.97] ${
+                    isSelected
+                      ? "border-accent bg-accent/10 ring-2 ring-accent/30"
+                      : isBest
+                        ? "border-amber-300/70 bg-amber-50/60 hover:border-amber-400 dark:border-amber-500/40 dark:bg-amber-900/20"
+                        : "border-transparent bg-slate-100/60 hover:border-slate-200 dark:bg-slate-800/40 dark:hover:border-slate-600"
+                  }`}
+                  aria-pressed={isSelected}
+                  aria-label={`${dayKeyShortLabel(key)}${isToday ? ", today" : ""}${isBest ? ", best day" : ""}, ${b.count} quizzes, ${b.totalScore} points`}
+                >
+                  {isBest && (
+                    <span
+                      className="absolute -top-1.5 text-xs leading-none drop-shadow-sm"
+                      aria-hidden
+                    >
+                      👑
+                    </span>
+                  )}
+                  <span className="text-[10px] font-medium leading-none text-slate-500 dark:text-slate-400">
+                    {dayKeyShortLabel(key)}
+                  </span>
+                  <div className="flex h-24 w-full items-end justify-center px-0.5">
+                    <motion.div
+                      className={`w-full max-w-[2rem] rounded-t-md ${
+                        isBest
+                          ? "bg-gradient-to-t from-amber-500 to-amber-400 dark:from-amber-500 dark:to-amber-300"
+                          : "bg-accent/85 dark:bg-accent"
+                      }`}
+                      initial={false}
+                      animate={{ height: `${Math.max(h, b.count > 0 ? 8 : 4)}%` }}
+                      transition={{ type: "spring", stiffness: 200, damping: 22 }}
+                    />
+                  </div>
+                  <span className="text-[10px] font-semibold tabular-nums text-slate-700 dark:text-slate-200">
+                    {b.totalScore || "—"}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 

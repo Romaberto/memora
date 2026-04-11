@@ -55,14 +55,14 @@ const features = [
   {
     icon: "🌍",
     title: "Learn Anything",
-    body: "Books, courses, articles — if you can read it, Memora quizzes you.",
+    body: "Books, podcasts, lectures, videos, conversations — any topic, any format.",
     bg: "bg-teal-50",
     iconBg: "bg-teal-100",
   },
 ];
 
 const steps = [
-  { n: "1", title: "Paste your material", body: "Drop in notes, a book summary, or just a topic name.", color: "bg-emerald-100 text-emerald-700" },
+  { n: "1", title: "Paste your material", body: "Notes from a lecture, a podcast transcript, a book summary, or just a topic name.", color: "bg-emerald-100 text-emerald-700" },
   { n: "2", title: "Generate the quiz", body: "AI creates focused multiple-choice questions in seconds.", color: "bg-amber-100 text-amber-700" },
   { n: "3", title: "Play & remember", body: "Answer questions, earn points, and watch your knowledge grow.", color: "bg-blue-100 text-blue-700" },
 ];
@@ -116,8 +116,9 @@ export function LandingPage() {
               </h1>
 
               <p className="mt-4 max-w-lg text-base leading-relaxed text-[rgb(var(--muted))] sm:mt-5 sm:text-lg">
-                Turn anything you read into a quiz. Earn points, beat your scores,
-                and build real long-term memory — not just highlights.
+                Turn anything you read, watch, or listen to into a quiz —
+                books, podcasts, lectures, even a great film. Earn points,
+                beat your scores, and build real long-term memory.
               </p>
 
               <div className="mt-6 flex flex-wrap gap-3 sm:mt-8">

@@ -3,8 +3,7 @@ import prisma from "@/lib/db";
 import { getSessionUserId } from "@/lib/auth";
 import { completeQuizBodySchema } from "@/lib/schemas/quiz";
 import { encouragingMessage, rankFromPercentage } from "@/lib/ranks";
-
-const POINTS_PER_CORRECT = 10;
+import { computeStreakScore } from "@/lib/scoring";
 
 export async function POST(req: Request) {
   const userId = await getSessionUserId();
@@ -60,9 +59,6 @@ export async function POST(req: Request) {
   );
 
   let correct = 0;
-  let streak = 0;
-  let streakMax = 0;
-  let score = 0;
 
   const rows: {
     quizQuestionId: string;
@@ -79,20 +75,17 @@ export async function POST(req: Request) {
       );
     }
     const isCorrect = a.selectedIndex === q.correctIndex;
-    if (isCorrect) {
-      correct += 1;
-      streak += 1;
-      streakMax = Math.max(streakMax, streak);
-      score += POINTS_PER_CORRECT;
-    } else {
-      streak = 0;
-    }
+    if (isCorrect) correct += 1;
     rows.push({
       quizQuestionId: a.quizQuestionId,
       selectedIndex: a.selectedIndex,
       isCorrect,
     });
   }
+
+  // Apply shared streak-combo scoring so the saved total matches what the
+  // player saw live during the quiz (base 10, +5 at 3-streak, 2× at 5+).
+  const { score, streakMax } = computeStreakScore(rows.map((r) => r.isCorrect));
 
   const total = request.questions.length;
   const percentage = total === 0 ? 0 : Math.round((correct / total) * 10000) / 100;
