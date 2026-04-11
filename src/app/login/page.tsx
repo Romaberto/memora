@@ -1,17 +1,38 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
+
+const OAUTH_ERROR_MESSAGES: Record<string, string> = {
+  google_not_configured: "Google sign-in isn't configured yet. Please use email and password.",
+  google_denied: "You cancelled the Google sign-in.",
+  google_missing_params: "Google didn't return a valid response. Please try again.",
+  google_session_expired: "That sign-in attempt expired. Please try again.",
+  google_state_mismatch: "Sign-in security check failed. Please try again.",
+  google_token_failed: "Couldn't verify your Google account. Please try again.",
+  google_userinfo_failed: "Couldn't load your Google profile. Please try again.",
+  google_email_unverified: "Your Google email isn't verified. Use a verified Google account or sign in with email and password.",
+};
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Surface OAuth error codes coming back from /api/auth/google/callback.
+  useEffect(() => {
+    const code = searchParams?.get("error");
+    if (code && OAUTH_ERROR_MESSAGES[code]) {
+      setError(OAUTH_ERROR_MESSAGES[code]);
+    }
+  }, [searchParams]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -47,7 +68,22 @@ export default function LoginPage() {
       </div>
 
       <Card>
-        <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
+        <div className="space-y-4">
+          <GoogleSignInButton />
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center" aria-hidden>
+              <div className="w-full border-t border-slate-200 dark:border-slate-700" />
+            </div>
+            <div className="relative flex justify-center">
+              <span className="bg-white px-2 text-[11px] font-medium uppercase tracking-wider text-slate-400 dark:bg-slate-900 dark:text-slate-500">
+                or
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <form onSubmit={(e) => void handleSubmit(e)} className="mt-4 space-y-4">
           <div>
             <label
               htmlFor="email"

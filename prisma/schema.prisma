@@ -18,6 +18,9 @@ model User {
   emailVerified DateTime?
   image         String?
   passwordHash  String?   // replaces CSV
+  /// Google account "sub" (stable identifier). Set when the user signs in
+  /// via Google OAuth. Nullable so password-only accounts remain valid.
+  googleId      String?   @unique
   subscriptionTier String @default("free") // "free" | "pro"
   createdAt     DateTime  @default(now())
 
