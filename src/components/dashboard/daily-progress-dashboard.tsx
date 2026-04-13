@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Card, CardTitle } from "@/components/ui/card";
 import {
@@ -76,6 +76,18 @@ export function DailyProgressDashboard({ sessions, subscriptionTier }: Props) {
   );
 
   const activeBucket = selectedYmd ? buckets.get(selectedYmd) : null;
+
+  // Auto-scroll the chart to the right (most recent days) on load or range change
+  const chartRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = chartRef.current;
+    if (el) {
+      // Use requestAnimationFrame to ensure DOM has rendered
+      requestAnimationFrame(() => {
+        el.scrollLeft = el.scrollWidth;
+      });
+    }
+  }, [effectiveDays]);
 
   return (
     <Card>
@@ -224,7 +236,7 @@ export function DailyProgressDashboard({ sessions, subscriptionTier }: Props) {
             ))}
           </div>
 
-          <div className="relative flex gap-1.5 overflow-x-auto pb-2 pt-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div ref={chartRef} className="relative flex gap-1.5 overflow-x-auto pb-2 pt-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {dayKeys.map((key) => {
               const b = buckets.get(key)!;
               const h = Math.round((b.totalScore / maxBarScore) * 100);

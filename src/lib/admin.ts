@@ -1,13 +1,12 @@
 /**
- * Admin gating for the live ops dashboard.
+ * Admin gating.
  *
- * The set of admin users is controlled entirely via the `ADMIN_EMAILS` env var
- * (comma-separated). No DB column, no UI to grant — intentional, so it can't
- * be flipped on by a runtime bug. Add yourself by setting:
+ * A user is considered admin if EITHER:
+ *   1. Their email is in the ADMIN_EMAILS env var (bootstrap / fallback), OR
+ *   2. Their `role` column in the DB is "admin" (managed via admin panel).
  *
- *   ADMIN_EMAILS="you@example.com,colleague@example.com"
- *
- * If `ADMIN_EMAILS` is empty, NOBODY is admin (the dashboard is dark).
+ * The env var acts as a bootstrap mechanism — once you can access the admin
+ * panel, you can promote users from the UI and the env var becomes optional.
  */
 import { redirect } from "next/navigation";
 import prisma from "./db";
@@ -23,16 +22,24 @@ function adminEmailSet(): Set<string> {
   );
 }
 
-/** True if the given userId belongs to an admin per ADMIN_EMAILS. */
+/** True if the given userId is an admin (env var OR DB role). */
 export async function isAdmin(userId: string): Promise<boolean> {
-  const admins = adminEmailSet();
-  if (admins.size === 0) return false;
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { email: true },
+    select: { email: true, role: true },
   });
-  if (!user?.email) return false;
-  return admins.has(user.email.toLowerCase());
+  if (!user) return false;
+
+  // DB role check
+  if (user.role === "admin") return true;
+
+  // Env var fallback
+  const admins = adminEmailSet();
+  if (admins.size > 0 && user.email && admins.has(user.email.toLowerCase())) {
+    return true;
+  }
+
+  return false;
 }
 
 /**

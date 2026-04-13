@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * Admin user management table with search, filter, sort, and pagination.
- * Fetches from /api/admin/users.
+ * Admin user management table with search, filter, sort, pagination,
+ * and an edit drawer for role / subscription tier / name / nickname.
  */
 import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
@@ -13,6 +13,7 @@ type AdminUser = {
   nickname: string | null;
   email: string | null;
   image: string | null;
+  role: string;
   subscriptionTier: string;
   country: string | null;
   createdAt: string;
@@ -32,7 +33,7 @@ type Pagination = {
 type SortField = "createdAt" | "email" | "name" | "subscriptionTier" | "totalPoints" | "quizCount";
 type SortOrder = "asc" | "desc";
 
-/** Convert ISO 3166-1 alpha-2 code to flag emoji (e.g. "US" → 🇺🇸) */
+/** Convert ISO 3166-1 alpha-2 code to flag emoji */
 function countryFlag(code: string): string {
   const upper = code.toUpperCase();
   if (upper.length !== 2) return "";
@@ -51,6 +52,258 @@ const LEAGUE_COLORS: Record<string, string> = {
   Unranked: "bg-slate-50 text-slate-400",
 };
 
+const ROLE_BADGE: Record<string, string> = {
+  admin: "bg-rose-100 text-rose-700",
+  user: "bg-slate-100 text-slate-500",
+};
+
+// ─── Edit Modal ─────────────────────────────────────────────────────────────
+
+function EditUserModal({
+  user,
+  onClose,
+  onSaved,
+}: {
+  user: AdminUser;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [role, setRole] = useState(user.role);
+  const [tier, setTier] = useState(user.subscriptionTier);
+  const [name, setName] = useState(user.name ?? "");
+  const [nickname, setNickname] = useState(user.nickname ?? "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  const hasChanges =
+    role !== user.role ||
+    tier !== user.subscriptionTier ||
+    name !== (user.name ?? "") ||
+    nickname !== (user.nickname ?? "");
+
+  async function handleSave() {
+    setSaving(true);
+    setError(null);
+    try {
+      const body: Record<string, string> = {};
+      if (role !== user.role) body.role = role;
+      if (tier !== user.subscriptionTier) body.subscriptionTier = tier;
+      if (name !== (user.name ?? "")) body.name = name;
+      if (nickname !== (user.nickname ?? "")) body.nickname = nickname;
+
+      const res = await fetch(`/api/admin/users/${user.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || `HTTP ${res.status}`);
+        return;
+      }
+
+      setSuccess(true);
+      setTimeout(() => {
+        onSaved();
+        onClose();
+      }, 600);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div
+        className="relative mx-4 w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-slate-900"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Close button */}
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-4 top-4 text-slate-400 hover:text-slate-600"
+        >
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+
+        {/* Header */}
+        <div className="mb-5 flex items-center gap-3">
+          {user.image ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img src={user.image} alt="" className="h-10 w-10 rounded-full object-cover" />
+          ) : (
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-sm font-bold text-slate-500">
+              {(user.name || user.email || "?")[0]?.toUpperCase()}
+            </div>
+          )}
+          <div>
+            <p className="font-semibold text-slate-900 dark:text-white">
+              {user.name || user.nickname || "Unknown"}
+            </p>
+            <p className="text-xs text-slate-500">{user.email}</p>
+          </div>
+        </div>
+
+        {/* Stats (read-only) */}
+        <div className="mb-5 grid grid-cols-3 gap-3">
+          <div className="rounded-xl bg-slate-50 px-3 py-2 text-center dark:bg-slate-800">
+            <p className="text-lg font-bold tabular-nums text-slate-900 dark:text-white">
+              {user.totalPoints.toLocaleString()}
+            </p>
+            <p className="text-[10px] uppercase tracking-wider text-slate-400">Points</p>
+          </div>
+          <div className="rounded-xl bg-slate-50 px-3 py-2 text-center dark:bg-slate-800">
+            <p className="text-lg font-bold tabular-nums text-slate-900 dark:text-white">
+              {user.quizCount}
+            </p>
+            <p className="text-[10px] uppercase tracking-wider text-slate-400">Quizzes</p>
+          </div>
+          <div className="rounded-xl bg-slate-50 px-3 py-2 text-center dark:bg-slate-800">
+            <p className="text-lg font-bold tabular-nums text-slate-900 dark:text-white">
+              {user.avgAccuracy != null ? `${user.avgAccuracy}%` : "—"}
+            </p>
+            <p className="text-[10px] uppercase tracking-wider text-slate-400">Accuracy</p>
+          </div>
+        </div>
+
+        {/* Editable fields */}
+        <div className="space-y-4">
+          {/* Role */}
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Role
+            </label>
+            <div className="flex gap-2">
+              {["user", "admin"].map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setRole(r)}
+                  className={`flex-1 rounded-xl border px-3 py-2 text-sm font-semibold transition-colors ${
+                    role === r
+                      ? r === "admin"
+                        ? "border-rose-300 bg-rose-50 text-rose-700"
+                        : "border-accent bg-accent/10 text-accent"
+                      : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50 dark:border-slate-700"
+                  }`}
+                >
+                  {r.charAt(0).toUpperCase() + r.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Subscription Tier */}
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Subscription Tier
+            </label>
+            <div className="flex gap-2">
+              {["free", "pro"].map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setTier(t)}
+                  className={`flex-1 rounded-xl border px-3 py-2 text-sm font-semibold transition-colors ${
+                    tier === t
+                      ? t === "pro"
+                        ? "border-accent bg-accent/10 text-accent"
+                        : "border-slate-300 bg-slate-50 text-slate-700"
+                      : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50 dark:border-slate-700"
+                  }`}
+                >
+                  {t.charAt(0).toUpperCase() + t.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Name */}
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Name
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+            />
+          </div>
+
+          {/* Nickname */}
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Nickname
+            </label>
+            <input
+              type="text"
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+            />
+          </div>
+
+          {/* Info badges (read-only) */}
+          <div className="flex flex-wrap gap-2 pt-1">
+            <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${LEAGUE_COLORS[user.league] ?? LEAGUE_COLORS.Unranked}`}>
+              {user.league}
+            </span>
+            {user.country && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">
+                {countryFlag(user.country)} {user.country}
+              </span>
+            )}
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
+              Joined {new Date(user.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+            </span>
+          </div>
+        </div>
+
+        {/* Error / Success */}
+        {error && (
+          <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+            {error}
+          </div>
+        )}
+        {success && (
+          <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+            Saved successfully
+          </div>
+        )}
+
+        {/* Actions */}
+        <div className="mt-5 flex gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={!hasChanges || saving}
+            onClick={() => void handleSave()}
+            className="flex-1 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {saving ? "Saving…" : "Save changes"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Table ─────────────────────────────────────────────────────────────
+
 export function AdminUsersView() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
@@ -66,6 +319,7 @@ export function AdminUsersView() {
   const [order, setOrder] = useState<SortOrder>("desc");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
 
   // Debounce search
   useEffect(() => {
@@ -124,6 +378,15 @@ export function AdminUsersView() {
 
   return (
     <div className="space-y-4">
+      {/* Edit modal */}
+      {editingUser && (
+        <EditUserModal
+          user={editingUser}
+          onClose={() => setEditingUser(null)}
+          onSaved={() => void fetchUsers(pagination.page)}
+        />
+      )}
+
       {/* Filters row */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px]">
@@ -174,7 +437,7 @@ export function AdminUsersView() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/60 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:border-slate-800 dark:bg-slate-900/40">
-                <th className="px-4 py-3">User</th>
+                <th className="sticky left-0 z-10 bg-slate-50/95 px-4 py-3 backdrop-blur-sm dark:bg-slate-900/95">User</th>
                 <th
                   className="cursor-pointer px-4 py-3 select-none hover:text-slate-700"
                   onClick={() => handleSort("email")}
@@ -182,6 +445,7 @@ export function AdminUsersView() {
                   Email
                   <SortIcon field="email" />
                 </th>
+                <th className="px-4 py-3">Role</th>
                 <th
                   className="cursor-pointer px-4 py-3 select-none hover:text-slate-700"
                   onClick={() => handleSort("subscriptionTier")}
@@ -213,18 +477,19 @@ export function AdminUsersView() {
                   Joined
                   <SortIcon field="createdAt" />
                 </th>
+                <th className="sticky right-0 bg-slate-50/95 px-4 py-3 text-center backdrop-blur-sm dark:bg-slate-900/95">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {loading && users.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-12 text-center text-slate-400">
+                  <td colSpan={11} className="px-4 py-12 text-center text-slate-400">
                     Loading…
                   </td>
                 </tr>
               ) : users.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-12 text-center text-slate-400">
+                  <td colSpan={11} className="px-4 py-12 text-center text-slate-400">
                     No users found.
                   </td>
                 </tr>
@@ -235,7 +500,7 @@ export function AdminUsersView() {
                     className="transition-colors hover:bg-slate-50/60 dark:hover:bg-slate-900/30"
                   >
                     {/* User avatar + name */}
-                    <td className="px-4 py-3">
+                    <td className="sticky left-0 z-10 bg-white/95 px-4 py-3 backdrop-blur-sm dark:bg-slate-900/95">
                       <div className="flex items-center gap-3">
                         {u.image ? (
                           /* eslint-disable-next-line @next/next/no-img-element */
@@ -262,6 +527,16 @@ export function AdminUsersView() {
                     {/* Email */}
                     <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
                       <span className="truncate block max-w-[200px]">{u.email || "—"}</span>
+                    </td>
+                    {/* Role */}
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
+                          ROLE_BADGE[u.role] ?? ROLE_BADGE.user
+                        }`}
+                      >
+                        {u.role}
+                      </span>
                     </td>
                     {/* Tier badge */}
                     <td className="px-4 py-3">
@@ -315,6 +590,16 @@ export function AdminUsersView() {
                         day: "numeric",
                         year: "numeric",
                       })}
+                    </td>
+                    {/* Edit button */}
+                    <td className="sticky right-0 bg-white/95 px-4 py-3 text-center backdrop-blur-sm dark:bg-slate-900/95">
+                      <button
+                        type="button"
+                        onClick={() => setEditingUser(u)}
+                        className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 transition-colors hover:border-accent hover:text-accent dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                      >
+                        Edit
+                      </button>
                     </td>
                   </tr>
                 ))

@@ -28,6 +28,10 @@ model User {
   /// Google account "sub" (stable identifier). Set when the user signs in
   /// via Google OAuth. Nullable so password-only accounts remain valid.
   googleId      String?   @unique
+  /// "user" | "admin" — controls access to /admin panel and management APIs.
+  /// Bootstrap the first admin via ADMIN_EMAILS env var; after that, admins
+  /// can promote other users from the admin panel.
+  role            String  @default("user")  // "user" | "admin"
   subscriptionTier String @default("free") // "free" | "pro"
   /// ISO 3166-1 alpha-2 country code captured at registration from Vercel's
   /// x-vercel-ip-country header (e.g. "US", "DE", "BR"). Null for users
