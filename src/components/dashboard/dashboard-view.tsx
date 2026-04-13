@@ -259,7 +259,7 @@ function MiniLeaderboard({ leaderboard }: {
 
 // ─── score ring — small circular progress indicator ─────────────────────────
 
-function ScoreRing({ percentage, size = 32 }: { percentage: number; size?: number }) {
+function ScoreRing({ correct, total, percentage, size = 36 }: { correct: number; total: number; percentage: number; size?: number }) {
   const r = (size - 4) / 2;
   const c = 2 * Math.PI * r;
   const filled = (percentage / 100) * c;
@@ -275,9 +275,9 @@ function ScoreRing({ percentage, size = 32 }: { percentage: number; size?: numbe
         x={size / 2} y={size / 2}
         textAnchor="middle" dominantBaseline="central"
         className="fill-slate-700 dark:fill-slate-200 rotate-90 origin-center"
-        style={{ fontSize: size * 0.3, fontWeight: 700 }}
+        style={{ fontSize: size * 0.24, fontWeight: 700 }}
       >
-        {Math.round(percentage)}
+        {correct}/{total}
       </text>
     </svg>
   );
@@ -357,7 +357,7 @@ function ActivitySection({
                     href={`/dashboard/session/${s.id}`}
                     className="group flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors duration-150 ease-out hover:bg-slate-50 active:scale-[0.995] dark:hover:bg-slate-800/40"
                   >
-                    <ScoreRing percentage={s.percentage} />
+                    <ScoreRing correct={Math.round(s.percentage / 100 * s.questionCount)} total={s.questionCount} percentage={s.percentage} />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-slate-900 dark:text-white">
                         {s.topic}
