@@ -16,6 +16,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { getSessionUserId } from "@/lib/auth";
 import { isAdmin } from "@/lib/admin";
+import { getLeague } from "@/lib/leagues";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -134,14 +135,7 @@ export async function GET(req: NextRequest) {
         ? u.quizSessions.reduce((sum, s) => sum + s.percentage, 0) / u.quizSessions.length
         : null;
 
-    // League based on total points
-    let league = "Unranked";
-    if (totalPoints >= 5000) league = "Diamond";
-    else if (totalPoints >= 2000) league = "Platinum";
-    else if (totalPoints >= 1000) league = "Gold";
-    else if (totalPoints >= 500) league = "Silver";
-    else if (totalPoints >= 100) league = "Bronze";
-    else if (totalPoints > 0) league = "Starter";
+    const league = getLeague(totalPoints).name;
 
     return {
       id: u.id,

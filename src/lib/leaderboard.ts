@@ -2,10 +2,11 @@
  * Leaderboard aggregation.
  * Groups non-fallback QuizSession rows per user → sorts by total points desc.
  *
- * User display data (nickname, name, avatarUrl) is now fetched directly from
- * the Prisma User table — the CSV layer no longer exists.
+ * Returns base points and streak (bonus) points separately so the UI can
+ * display a breakdown while ranking by total.
  */
 import prisma from "./db";
+import { getLeague } from "./leagues";
 
 export type LeaderboardPeriod = "alltime" | "month" | "week";
 
@@ -15,10 +16,13 @@ export type LeaderboardEntry = {
   fullName: string;
   avatarUrl: string;
   totalPoints: number;
+  basePoints: number;    // sum of base points (10 per correct)
+  streakPoints: number;  // sum of streak bonus points
   quizCount: number;
   avgAccuracy: number | null;  // percentage 0–100
   bestStreak: number;
-  rank: number;              // 1-based position in this result set
+  league: string;        // league name derived from totalPoints
+  rank: number;          // 1-based position in this result set
 };
 
 function periodStart(period: LeaderboardPeriod): Date | undefined {
@@ -42,6 +46,8 @@ export async function getLeaderboard(
     select: {
       userId: true,
       score: true,
+      basePoints: true,
+      streakPoints: true,
       percentage: true,
       streakMax: true,
     },
@@ -51,6 +57,8 @@ export async function getLeaderboard(
   // Aggregate per user in memory
   type Agg = {
     totalPoints: number;
+    basePoints: number;
+    streakPoints: number;
     quizCount: number;
     pctSum: number;
     bestStreak: number;
@@ -58,11 +66,15 @@ export async function getLeaderboard(
   const map = new Map<string, Agg>();
 
   for (const s of sessions) {
-    const a = map.get(s.userId) ?? { totalPoints: 0, quizCount: 0, pctSum: 0, bestStreak: 0 };
-    a.totalPoints += s.score;
-    a.quizCount  += 1;
-    a.pctSum     += s.percentage;
-    a.bestStreak  = Math.max(a.bestStreak, s.streakMax);
+    const a = map.get(s.userId) ?? { totalPoints: 0, basePoints: 0, streakPoints: 0, quizCount: 0, pctSum: 0, bestStreak: 0 };
+    a.totalPoints  += s.score;
+    // For sessions created before the split, basePoints/streakPoints may be null.
+    // In that case, attribute the entire score to basePoints (conservative).
+    a.basePoints   += s.basePoints ?? s.score;
+    a.streakPoints += s.streakPoints ?? 0;
+    a.quizCount    += 1;
+    a.pctSum       += s.percentage;
+    a.bestStreak    = Math.max(a.bestStreak, s.streakMax);
     map.set(s.userId, a);
   }
 
@@ -86,9 +98,12 @@ export async function getLeaderboard(
       fullName    : u?.name || "",
       avatarUrl   : u?.image || "",
       totalPoints : a.totalPoints,
+      basePoints  : a.basePoints,
+      streakPoints: a.streakPoints,
       quizCount   : a.quizCount,
       avgAccuracy : a.quizCount > 0 ? a.pctSum / a.quizCount : null,
       bestStreak  : a.bestStreak,
+      league      : getLeague(a.totalPoints).name,
     });
   }
 

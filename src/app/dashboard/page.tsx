@@ -116,7 +116,12 @@ export default async function DashboardPage() {
       dailyQuizCount={dailyQuizCount}
       dailyQuizLimit={subscriptionTier === "free" ? FREE_DAILY_QUIZ_LIMIT : Infinity}
       stats={{ totalSessions, avgPercentage: avgPct, sessionsLast7Days: recentCount, overallRank, avgSecondsPerQuestion, estimatedTenQuestionSeconds }}
-      leaderboard={{ entries: leaderboardEntries, userRank, totalPlayers: leaderboardEntries.length }}
+      leaderboard={{
+        entries: leaderboardEntries,
+        userRank,
+        totalPlayers: leaderboardEntries.length,
+        userTotalPoints: leaderboardEntries.find((e) => e.userId === userId)?.totalPoints ?? 0,
+      }}
     />
   );
 }

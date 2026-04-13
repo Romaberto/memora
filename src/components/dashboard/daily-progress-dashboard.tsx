@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Card, CardTitle } from "@/components/ui/card";
 import {
@@ -79,89 +79,33 @@ export function DailyProgressDashboard({ sessions, subscriptionTier }: Props) {
 
   // Auto-scroll the chart to the right (most recent days) on load or range change
   const chartRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const updateScrollState = useCallback(() => {
+    const el = chartRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 4);
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+  }, []);
+
   useEffect(() => {
     const el = chartRef.current;
     if (el) {
-      // Use requestAnimationFrame to ensure DOM has rendered
       requestAnimationFrame(() => {
         el.scrollLeft = el.scrollWidth;
+        updateScrollState();
       });
     }
-  }, [effectiveDays]);
+  }, [effectiveDays, updateScrollState]);
 
   return (
     <Card>
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <CardTitle>Daily progress</CardTitle>
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-            Track points and accuracy by day. Tap a day for details.
-          </p>
-        </div>
-        <div
-          className={`flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:max-w-[13.5rem] ${
-            subscriptionTier === "free"
-              ? "rounded-xl border border-slate-200 bg-slate-50/90 p-2 dark:border-slate-700 dark:bg-slate-900/50"
-              : ""
-          }`}
-        >
-          <div
-            className={`flex gap-1 p-1 ${
-              subscriptionTier === "pro"
-                ? "rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900/60"
-                : ""
-            }`}
-            role="group"
-            aria-label="Date range"
-          >
-            <button
-              type="button"
-              onClick={() => {
-                setRangeDays(FREE_DAYS);
-                setSelectedYmd(null);
-              }}
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-[color,background-color,box-shadow] duration-150 ease-out active:scale-[0.97] ${
-                rangeDays === FREE_DAYS || rangeLockedToSeven
-                  ? "bg-white text-accent shadow-sm dark:bg-slate-800 dark:text-accent"
-                  : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
-              }`}
-            >
-              7 days
-            </button>
-            {subscriptionTier === "pro" ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setRangeDays(PRO_DAYS);
-                  setSelectedYmd(null);
-                }}
-                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-[color,background-color,box-shadow] duration-150 ease-out active:scale-[0.97] ${
-                  rangeDays === PRO_DAYS
-                    ? "bg-white text-accent shadow-sm dark:bg-slate-800 dark:text-accent"
-                    : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
-                }`}
-              >
-                30 days
-              </button>
-            ) : (
-              <span
-                className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-slate-400 dark:text-slate-500"
-                title="Included with Memora Pro"
-              >
-                <LockIcon />
-                30 days
-              </span>
-            )}
-          </div>
-          {subscriptionTier === "free" ? (
-            <p className="border-t border-slate-200 px-1 pb-0.5 pt-2 text-[11px] leading-snug text-slate-500 dark:border-slate-600 dark:text-slate-400">
-              <span className="font-semibold text-slate-600 dark:text-slate-300">
-                Memora Pro
-              </span>{" "}
-              unlocks the 30-day view and deeper progress history.
-            </p>
-          ) : null}
-        </div>
+      <div>
+        <CardTitle>Daily progress</CardTitle>
+        <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+          Track points and accuracy by day. Tap a day for details.
+        </p>
       </div>
 
       {/* Period achievements — hero layout: Period points elevated */}
@@ -213,15 +157,66 @@ export function DailyProgressDashboard({ sessions, subscriptionTier }: Props) {
 
       {/* Bar chart + day filters */}
       <div className="mt-5">
-        <div className="mb-2 flex items-baseline justify-between">
+        <div className="mb-2 flex items-center justify-between">
           <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
             Daily score (points)
           </p>
-          {maxBarScore > 1 && totals.sessionCount > 0 ? (
-            <p className="text-[10px] font-medium tabular-nums text-slate-400">
-              Max {maxBarScore}
-            </p>
-          ) : null}
+          <div className="flex items-center gap-2">
+            {maxBarScore > 1 && totals.sessionCount > 0 ? (
+              <p className="text-[10px] font-medium tabular-nums text-slate-400">
+                Max {maxBarScore}
+              </p>
+            ) : null}
+            {/* 7/30 day range selector — placed near the chart */}
+            <div
+              className={`flex gap-0.5 rounded-lg p-0.5 ${
+                subscriptionTier === "pro"
+                  ? "border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900/60"
+                  : "border border-slate-200 bg-slate-50/90 dark:border-slate-700 dark:bg-slate-900/50"
+              }`}
+              role="group"
+              aria-label="Date range"
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setRangeDays(FREE_DAYS);
+                  setSelectedYmd(null);
+                }}
+                className={`rounded-md px-2 py-1 text-[11px] font-semibold transition-[color,background-color,box-shadow] duration-150 ease-out active:scale-[0.97] ${
+                  rangeDays === FREE_DAYS || rangeLockedToSeven
+                    ? "bg-white text-accent shadow-sm dark:bg-slate-800 dark:text-accent"
+                    : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+                }`}
+              >
+                7d
+              </button>
+              {subscriptionTier === "pro" ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRangeDays(PRO_DAYS);
+                    setSelectedYmd(null);
+                  }}
+                  className={`rounded-md px-2 py-1 text-[11px] font-semibold transition-[color,background-color,box-shadow] duration-150 ease-out active:scale-[0.97] ${
+                    rangeDays === PRO_DAYS
+                      ? "bg-white text-accent shadow-sm dark:bg-slate-800 dark:text-accent"
+                      : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+                  }`}
+                >
+                  30d
+                </button>
+              ) : (
+                <span
+                  className="inline-flex items-center gap-0.5 rounded-md px-2 py-1 text-[11px] font-medium text-slate-400 dark:text-slate-500"
+                  title="Included with Memora Pro"
+                >
+                  <LockIcon className="h-3 w-3" />
+                  30d
+                </span>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Chart region — bars overlaid on subtle gridlines */}
@@ -236,7 +231,15 @@ export function DailyProgressDashboard({ sessions, subscriptionTier }: Props) {
             ))}
           </div>
 
-          <div ref={chartRef} className="relative flex gap-1.5 overflow-x-auto pb-2 pt-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {/* Scroll affordance fades */}
+          {canScrollLeft && (
+            <div className="pointer-events-none absolute bottom-0 left-0 top-0 z-10 w-8 bg-gradient-to-r from-white to-transparent dark:from-slate-900" aria-hidden />
+          )}
+          {canScrollRight && (
+            <div className="pointer-events-none absolute bottom-0 right-0 top-0 z-10 w-8 bg-gradient-to-l from-white to-transparent dark:from-slate-900" aria-hidden />
+          )}
+
+          <div ref={chartRef} onScroll={updateScrollState} className="relative flex gap-1.5 overflow-x-auto pb-2 pt-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {dayKeys.map((key) => {
               const b = buckets.get(key)!;
               const h = Math.round((b.totalScore / maxBarScore) * 100);

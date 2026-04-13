@@ -6,6 +6,7 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
+import { LEAGUES } from "@/lib/leagues";
 
 type AdminUser = {
   id: string;
@@ -42,15 +43,15 @@ function countryFlag(code: string): string {
   );
 }
 
-const LEAGUE_COLORS: Record<string, string> = {
-  Diamond: "bg-violet-100 text-violet-700",
-  Platinum: "bg-sky-100 text-sky-700",
-  Gold: "bg-amber-100 text-amber-700",
-  Silver: "bg-slate-100 text-slate-600",
-  Bronze: "bg-orange-100 text-orange-700",
-  Starter: "bg-emerald-100 text-emerald-700",
-  Unranked: "bg-slate-50 text-slate-400",
-};
+/** Build league name → color classes map from the shared leagues module. */
+const LEAGUE_COLORS: Record<string, string> = Object.fromEntries(
+  LEAGUES.map((l) => [l.name, `${l.bg} ${l.color}`]),
+);
+LEAGUE_COLORS["Unranked"] = "bg-slate-50 text-slate-400";
+
+const LEAGUE_ICONS: Record<string, string> = Object.fromEntries(
+  LEAGUES.map((l) => [l.name, l.icon]),
+);
 
 const ROLE_BADGE: Record<string, string> = {
   admin: "bg-rose-100 text-rose-700",
@@ -253,7 +254,8 @@ function EditUserModal({
 
           {/* Info badges (read-only) */}
           <div className="flex flex-wrap gap-2 pt-1">
-            <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${LEAGUE_COLORS[user.league] ?? LEAGUE_COLORS.Unranked}`}>
+            <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${LEAGUE_COLORS[user.league] ?? LEAGUE_COLORS.Unranked}`}>
+              <span>{LEAGUE_ICONS[user.league] ?? ""}</span>
               {user.league}
             </span>
             {user.country && (
@@ -576,10 +578,11 @@ export function AdminUsersView() {
                     {/* League */}
                     <td className="px-4 py-3">
                       <span
-                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
+                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
                           LEAGUE_COLORS[u.league] ?? LEAGUE_COLORS.Unranked
                         }`}
                       >
+                        <span>{LEAGUE_ICONS[u.league] ?? ""}</span>
                         {u.league}
                       </span>
                     </td>

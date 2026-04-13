@@ -2,7 +2,7 @@ import { requireUserId } from "@/lib/auth";
 import { getLeaderboard, findUserRank, type LeaderboardPeriod } from "@/lib/leaderboard";
 import { LeaderboardView } from "./leaderboard-view";
 
-type Props = { searchParams: { p?: string } };
+type Props = { searchParams: { p?: string; tab?: string } };
 
 function parsePeriod(raw: string | undefined): LeaderboardPeriod {
   if (raw === "month" || raw === "week") return raw;
@@ -21,6 +21,7 @@ export default async function LeaderboardPage({ searchParams }: Props) {
       currentUserId={userId}
       userRank={userRank}
       period={period}
+      initialTab={searchParams.tab === "leagues" ? "leagues" : "global"}
     />
   );
 }

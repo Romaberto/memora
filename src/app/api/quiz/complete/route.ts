@@ -85,7 +85,7 @@ export async function POST(req: Request) {
 
   // Apply shared streak-combo scoring so the saved total matches what the
   // player saw live during the quiz (base 10, +5 at 3-streak, 2× at 5+).
-  const { score, streakMax } = computeStreakScore(rows.map((r) => r.isCorrect));
+  const { score, basePoints, streakPoints, streakMax } = computeStreakScore(rows.map((r) => r.isCorrect));
 
   const total = request.questions.length;
   const percentage = total === 0 ? 0 : Math.round((correct / total) * 10000) / 100;
@@ -96,6 +96,8 @@ export async function POST(req: Request) {
       userId,
       quizRequestId: request.id,
       score,
+      basePoints,
+      streakPoints,
       percentage,
       rankName,
       questionCount: total,
@@ -121,6 +123,8 @@ export async function POST(req: Request) {
   return NextResponse.json({
     sessionId: quizSession.id,
     score,
+    basePoints,
+    streakPoints,
     correct,
     total,
     percentage,

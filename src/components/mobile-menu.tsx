@@ -82,14 +82,15 @@ export function MobileMenu({ user }: { user: MobileUser }) {
         </svg>
       </button>
 
-      {/* Backdrop */}
-      <div
-        aria-hidden
-        onClick={close}
-        className={`fixed inset-x-0 bottom-0 top-16 z-40 bg-black/30 backdrop-blur-sm transition-opacity duration-200 ease-out ${
-          open ? "opacity-100" : "pointer-events-none opacity-0"
-        }`}
-      />
+      {/* Backdrop — button for iOS touch compat */}
+      {open && (
+        <button
+          type="button"
+          aria-label="Close menu"
+          onClick={close}
+          className="fixed inset-x-0 bottom-0 top-16 z-40 cursor-default bg-black/30 backdrop-blur-sm transition-opacity duration-200 ease-out"
+        />
+      )}
 
       {/* Panel */}
       <div

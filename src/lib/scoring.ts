@@ -22,12 +22,18 @@ export function pointsForStreak(nextStreak: number): { base: number; bonus: numb
 /**
  * Walk an ordered list of correctness flags and produce the final score +
  * max streak, applying the combo rules above.
+ *
+ * Returns `basePoints` (10 per correct) and `streakPoints` (bonus from combos)
+ * separately so the leaderboard can display both.  `score` = basePoints + streakPoints.
  */
 export function computeStreakScore(isCorrectOrdered: boolean[]): {
   score: number;
+  basePoints: number;
+  streakPoints: number;
   streakMax: number;
 } {
-  let score = 0;
+  let basePoints = 0;
+  let streakPoints = 0;
   let streak = 0;
   let streakMax = 0;
   for (const ok of isCorrectOrdered) {
@@ -35,10 +41,11 @@ export function computeStreakScore(isCorrectOrdered: boolean[]): {
       streak += 1;
       if (streak > streakMax) streakMax = streak;
       const { base, bonus } = pointsForStreak(streak);
-      score += base + bonus;
+      basePoints += base;
+      streakPoints += bonus;
     } else {
       streak = 0;
     }
   }
-  return { score, streakMax };
+  return { score: basePoints + streakPoints, basePoints, streakPoints, streakMax };
 }

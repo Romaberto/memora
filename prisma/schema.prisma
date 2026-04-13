@@ -89,6 +89,11 @@ model QuizSession {
   quizRequest   QuizRequest @relation(fields: [quizRequestId], references: [id], onDelete: Cascade)
 
   score         Int
+  /// Base points (10 per correct answer). Null for sessions created before
+  /// the base/streak split was introduced — treat score as basePoints.
+  basePoints    Int?
+  /// Bonus points earned from streak combos (3-4 streak: +5, 5+: +10).
+  streakPoints  Int?
   percentage    Float
   rankName      String
   questionCount Int
