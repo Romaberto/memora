@@ -27,39 +27,21 @@ const fade = {
 const steps = [
   {
     n: "1",
-    title: "Paste your material",
-    body: "Lecture notes, a podcast transcript, a book summary, or just a topic name — anything works.",
+    title: "Paste anything",
+    body: "Drop in lecture notes, a podcast transcript, a book summary, or just a topic name. AI builds focused questions tailored to your material — not generic trivia.",
     color: "bg-emerald-100 text-emerald-700",
   },
   {
     n: "2",
-    title: "Generate the quiz",
-    body: "AI reads your text and creates focused multiple-choice questions in seconds.",
+    title: "Remember 2\u00d7 more",
+    body: "Active recall is proven to double retention versus re-reading. Every question you answer strengthens the neural pathways you\u2019ll need later.",
     color: "bg-amber-100 text-amber-700",
   },
   {
     n: "3",
-    title: "Play & remember",
-    body: "Answer questions, earn points, track your streaks, and lock knowledge into long-term memory.",
-    color: "bg-blue-100 text-blue-700",
-  },
-];
-
-const differentiators = [
-  {
-    number: "01",
-    title: "Paste anything, get a quiz",
-    body: "Drop in lecture notes, a podcast transcript, a meeting summary, or just a topic name. AI builds focused questions tailored to your material — not generic trivia.",
-  },
-  {
-    number: "02",
-    title: "Remember 2\u00d7 more",
-    body: "Active recall is proven to double retention versus re-reading. Every question you answer strengthens the neural pathways you\u2019ll need later.",
-  },
-  {
-    number: "03",
     title: "Watch yourself improve",
-    body: "Your dashboard tracks streaks, accuracy trends, quiz pace, and personal bests. See exactly where you\u2019re growing — and where to focus next.",
+    body: "Earn points, track streaks and accuracy trends on your dashboard. See exactly where you\u2019re growing — and where to focus next.",
+    color: "bg-blue-100 text-blue-700",
   },
 ];
 
@@ -129,13 +111,13 @@ export function LandingPage({
               </h1>
 
               <p className="mt-4 max-w-lg text-base leading-relaxed text-[rgb(var(--muted))] sm:mt-5 sm:text-lg">
-                Paste your notes, name a topic, or drop in a transcript.
-                AI turns it into a quiz in seconds — so you actually
-                remember what you learn.
+                Turn anything you read, watch, or listen to into a quiz —
+                books, podcasts, lectures, even a great film. Earn points,
+                beat your scores, and build real long-term memory.
               </p>
 
               <div className="mt-6 flex flex-wrap items-center gap-4 sm:mt-8">
-                <Link href="/register">
+                <Link href="/dashboard">
                   <Button type="button" className="!px-7 !py-3 !text-base !rounded-2xl">
                     Start for free →
                   </Button>
@@ -175,8 +157,13 @@ export function LandingPage({
               How it works
             </p>
             <h2 className="text-2xl font-bold sm:text-4xl">
-              Three steps to remember more
+              Not another flashcard app
             </h2>
+            <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-[rgb(var(--muted))] sm:text-base">
+              Flashcards test isolated facts. Memora generates contextual
+              questions from <em>your</em> material — with explanations,
+              gamification, and a dashboard that shows you growing.
+            </p>
           </motion.div>
 
           <div className="grid gap-4 md:grid-cols-3">
@@ -192,42 +179,6 @@ export function LandingPage({
                 </span>
                 <h3 className="text-lg font-bold">{s.title}</h3>
                 <p className="text-sm leading-relaxed text-[rgb(var(--muted))]">{s.body}</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── WHAT MAKES MEMORA DIFFERENT ──────────────────────── */}
-      <section className="py-12 sm:py-24">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <motion.div {...fade} className="mb-8 text-center sm:mb-12">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-amber-600 sm:text-sm">
-              Why Memora
-            </p>
-            <h2 className="text-2xl font-bold sm:text-4xl">
-              Not another flashcard app
-            </h2>
-            <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-[rgb(var(--muted))] sm:text-base">
-              Flashcards test isolated facts. Memora generates contextual
-              questions from <em>your</em> material — with explanations,
-              gamification, and a dashboard that shows you growing.
-            </p>
-          </motion.div>
-
-          <div className="grid gap-4 md:grid-cols-3">
-            {differentiators.map((d, i) => (
-              <motion.div
-                key={d.title}
-                {...fade}
-                transition={{ duration: 0.3, ease: EASE_OUT, delay: i * 0.06 }}
-                className="card-soft flex flex-col gap-3 rounded-2xl p-6"
-              >
-                <span className="text-xs font-bold tracking-widest text-emerald-600/60">
-                  {d.number}
-                </span>
-                <h3 className="text-lg font-bold leading-snug">{d.title}</h3>
-                <p className="text-sm leading-relaxed text-[rgb(var(--muted))]">{d.body}</p>
               </motion.div>
             ))}
           </div>
@@ -318,7 +269,7 @@ export function LandingPage({
               Three free quizzes a day. No credit card. Start building
               real long-term memory in under a minute.
             </p>
-            <Link href="/register" className="mt-6 inline-block sm:mt-8">
+            <Link href="/dashboard" className="mt-6 inline-block sm:mt-8">
               <Button
                 type="button"
                 className="!bg-white !text-emerald-700 hover:!bg-emerald-50 !px-8 !py-3 !text-base !rounded-2xl !shadow-soft-md"
