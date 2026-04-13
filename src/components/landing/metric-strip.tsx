@@ -26,14 +26,14 @@ const METRICS: Metric[] = [
   {
     value: 2,
     suffix: "×",
-    label: "remembered after a week vs passive re-reading",
+    label: "more recalled after one week vs re-reading",
     source: "Roediger & Karpicke, Psych. Science 2006",
   },
   {
-    value: 50,
+    value: 40,
     suffix: "%",
-    label: "less forgetting compared to re-reading",
-    source: "Roediger & Karpicke, Psych. Science 2006",
+    label: "better exam scores with active recall",
+    source: "Dunlosky et al., Psych. Science in the Public Interest 2013",
   },
   {
     value: 100,
@@ -150,7 +150,7 @@ export function MetricStrip() {
 
       {/* Combined mini citation under the strip on mobile only */}
       <p className="mx-auto mt-4 max-w-xs px-4 text-center text-[10px] italic leading-relaxed text-[rgb(var(--muted))] sm:hidden">
-        Sources: Roediger &amp; Karpicke, Psych. Science 2006 · Rowland 2014 meta-analysis
+        Sources: Roediger &amp; Karpicke, 2006 · Dunlosky et al., 2013 · Rowland, 2014
       </p>
     </section>
   );
