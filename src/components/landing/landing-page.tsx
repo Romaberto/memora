@@ -7,6 +7,10 @@ import { NeuronNetwork } from "./neuron-network";
 import { HeroQuizDemo } from "./hero-quiz-demo";
 import { MetricStrip } from "./metric-strip";
 
+/* ------------------------------------------------------------------ */
+/*  Shared animation preset                                            */
+/* ------------------------------------------------------------------ */
+
 const EASE_OUT = [0.23, 1, 0.32, 1] as const;
 
 const fade = {
@@ -16,79 +20,88 @@ const fade = {
   transition: { duration: 0.3, ease: EASE_OUT },
 };
 
-const features = [
+/* ------------------------------------------------------------------ */
+/*  Data                                                               */
+/* ------------------------------------------------------------------ */
+
+const steps = [
   {
-    icon: "⚡",
-    title: "Instant AI Quizzes",
-    body: "Paste notes or name a topic — sharp questions generated in seconds.",
-    bg: "bg-amber-50",
-    iconBg: "bg-amber-100",
+    n: "1",
+    title: "Paste your material",
+    body: "Lecture notes, a podcast transcript, a book summary, or just a topic name — anything works.",
+    color: "bg-emerald-100 text-emerald-700",
   },
   {
-    icon: "🧠",
-    title: "Active Recall",
-    body: "Retrieval practice is proven to boost memory better than re-reading.",
-    bg: "bg-emerald-50",
-    iconBg: "bg-emerald-100",
+    n: "2",
+    title: "Generate the quiz",
+    body: "AI reads your text and creates focused multiple-choice questions in seconds.",
+    color: "bg-amber-100 text-amber-700",
   },
   {
-    icon: "🏆",
-    title: "Earn Points",
-    body: "Every quiz earns XP. Climb the leaderboard against other learners.",
-    bg: "bg-blue-50",
-    iconBg: "bg-blue-100",
-  },
-  {
-    icon: "📈",
-    title: "Track Progress",
-    body: "See streaks, accuracy trends, and personal bests on your dashboard.",
-    bg: "bg-purple-50",
-    iconBg: "bg-purple-100",
-  },
-  {
-    icon: "🔄",
-    title: "Instant Feedback",
-    body: "Explanations after each answer help you correct mistakes fast.",
-    bg: "bg-rose-50",
-    iconBg: "bg-rose-100",
-  },
-  {
-    icon: "🌍",
-    title: "Learn Anything",
-    body: "Books, podcasts, lectures, videos, conversations — any topic, any format.",
-    bg: "bg-teal-50",
-    iconBg: "bg-teal-100",
+    n: "3",
+    title: "Play & remember",
+    body: "Answer questions, earn points, track your streaks, and lock knowledge into long-term memory.",
+    color: "bg-blue-100 text-blue-700",
   },
 ];
 
-const steps = [
-  { n: "1", title: "Paste your material", body: "Notes from a lecture, a podcast transcript, a book summary, or just a topic name.", color: "bg-emerald-100 text-emerald-700" },
-  { n: "2", title: "Generate the quiz", body: "AI creates focused multiple-choice questions in seconds.", color: "bg-amber-100 text-amber-700" },
-  { n: "3", title: "Play & remember", body: "Answer questions, earn points, and watch your knowledge grow.", color: "bg-blue-100 text-blue-700" },
+const differentiators = [
+  {
+    number: "01",
+    title: "Paste anything, get a quiz",
+    body: "Drop in lecture notes, a podcast transcript, a meeting summary, or just a topic name. AI builds focused questions tailored to your material — not generic trivia.",
+  },
+  {
+    number: "02",
+    title: "Remember 2\u00d7 more",
+    body: "Active recall is proven to double retention versus re-reading. Every question you answer strengthens the neural pathways you\u2019ll need later.",
+  },
+  {
+    number: "03",
+    title: "Watch yourself improve",
+    body: "Your dashboard tracks streaks, accuracy trends, quiz pace, and personal bests. See exactly where you\u2019re growing — and where to focus next.",
+  },
 ];
 
 const faqs = [
   {
-    q: "What is retrieval practice?",
-    a: "Retrieval practice means actively recalling information — like answering questions — rather than only re-reading. Research shows this improves long-term retention significantly.",
+    q: "Is Memora free?",
+    a: "Yes. You get 3 quizzes per day for free, with up to 10 questions each. That\u2019s plenty for a daily study habit. A Pro plan is coming for power users who want more.",
   },
   {
-    q: "Is this a replacement for reading?",
-    a: "No. Memora complements your reading by prompting recall in a structured, game-like way that makes knowledge stick.",
+    q: "What kind of material can I paste in?",
+    a: "Anything text-based: lecture notes, book highlights, podcast transcripts, meeting notes, Wikipedia articles, even just a topic name like \u201cPhotosynthesis.\u201d The more context you give, the sharper the questions.",
   },
   {
-    q: "How many questions should I generate?",
-    a: "Start with 10 for a quick check, or 20–30 for deeper coverage. The more notes you provide, the better the questions.",
+    q: "Does it work on my phone?",
+    a: "Yes. Memora is fully responsive \u2014 just open it in your mobile browser. No app install required.",
+  },
+  {
+    q: "What happens to my notes after I paste them?",
+    a: "Your text is sent to the AI model to generate questions, then the quiz is saved to your account. We don\u2019t sell or share your content.",
+  },
+  {
+    q: "How is this different from flashcards?",
+    a: "Flashcards test recall of isolated facts. Memora generates contextual multiple-choice questions with explanations \u2014 closer to how exams and real understanding work. Plus you earn points, compete on the leaderboard, and get a progress dashboard.",
   },
 ];
 
-export function LandingPage() {
+/* ------------------------------------------------------------------ */
+/*  Component                                                          */
+/* ------------------------------------------------------------------ */
+
+export function LandingPage({
+  quizCount = 0,
+  userCount = 0,
+}: {
+  quizCount?: number;
+  userCount?: number;
+}) {
   return (
     <div className="overflow-x-hidden">
 
-      {/* ── HERO ── */}
+      {/* ── HERO ────────────────────────────────────────────────── */}
       <section className="relative overflow-hidden">
-        {/* Animated neuron network */}
         <NeuronNetwork className="opacity-40" />
 
         {/* Soft gradient blobs */}
@@ -116,22 +129,25 @@ export function LandingPage() {
               </h1>
 
               <p className="mt-4 max-w-lg text-base leading-relaxed text-[rgb(var(--muted))] sm:mt-5 sm:text-lg">
-                Turn anything you read, watch, or listen to into a quiz —
-                books, podcasts, lectures, even a great film. Earn points,
-                beat your scores, and build real long-term memory.
+                Paste your notes, name a topic, or drop in a transcript.
+                AI turns it into a quiz in seconds — so you actually
+                remember what you learn.
               </p>
 
-              <div className="mt-6 flex flex-wrap gap-3 sm:mt-8">
-                <Link href="/dashboard">
+              <div className="mt-6 flex flex-wrap items-center gap-4 sm:mt-8">
+                <Link href="/register">
                   <Button type="button" className="!px-7 !py-3 !text-base !rounded-2xl">
                     Start for free →
                   </Button>
                 </Link>
-                <Link href="/dashboard">
-                  <Button type="button" variant="outline" className="!px-7 !py-3 !text-base !rounded-2xl">
-                    Try a quiz
-                  </Button>
-                </Link>
+                {quizCount >= 50 && (
+                  <span className="text-sm text-[rgb(var(--muted))]">
+                    <span className="font-semibold text-[rgb(var(--foreground))] tabular-nums">
+                      {quizCount.toLocaleString()}
+                    </span>{" "}
+                    quizzes generated
+                  </span>
+                )}
               </div>
             </motion.div>
 
@@ -148,10 +164,10 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* ── METRIC STRIP — research-backed proof ── */}
+      {/* ── METRIC STRIP — research proof ────────────────────── */}
       <MetricStrip />
 
-      {/* ── HOW IT WORKS ── */}
+      {/* ── HOW IT WORKS ─────────────────────────────────────── */}
       <section className="py-12 sm:py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <motion.div {...fade} className="mb-8 text-center sm:mb-12">
@@ -182,80 +198,86 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* ── FEATURES ── */}
+      {/* ── WHAT MAKES MEMORA DIFFERENT ──────────────────────── */}
       <section className="py-12 sm:py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <motion.div {...fade} className="mb-8 text-center sm:mb-12">
             <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-amber-600 sm:text-sm">
-              Features
+              Why Memora
             </p>
             <h2 className="text-2xl font-bold sm:text-4xl">
-              Built for serious learners
+              Not another flashcard app
             </h2>
+            <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-[rgb(var(--muted))] sm:text-base">
+              Flashcards test isolated facts. Memora generates contextual
+              questions from <em>your</em> material — with explanations,
+              gamification, and a dashboard that shows you growing.
+            </p>
           </motion.div>
 
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
-            {features.map((f, i) => (
+          <div className="grid gap-4 md:grid-cols-3">
+            {differentiators.map((d, i) => (
               <motion.div
-                key={f.title}
+                key={d.title}
                 {...fade}
-                transition={{ duration: 0.3, ease: EASE_OUT, delay: i * 0.05 }}
-                className="card-soft group flex flex-col gap-2 rounded-2xl p-4 sm:flex-row sm:gap-4 sm:p-5"
+                transition={{ duration: 0.3, ease: EASE_OUT, delay: i * 0.06 }}
+                className="card-soft flex flex-col gap-3 rounded-2xl p-6"
               >
-                <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xl sm:h-12 sm:w-12 sm:text-2xl ${f.iconBg}`}>
-                  {f.icon}
+                <span className="text-xs font-bold tracking-widest text-emerald-600/60">
+                  {d.number}
                 </span>
-                <div>
-                  <h3 className="text-sm font-bold leading-snug">{f.title}</h3>
-                  <p className="mt-1 text-xs leading-relaxed text-[rgb(var(--muted))] sm:text-sm">{f.body}</p>
-                </div>
+                <h3 className="text-lg font-bold leading-snug">{d.title}</h3>
+                <p className="text-sm leading-relaxed text-[rgb(var(--muted))]">{d.body}</p>
               </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── THE SCIENCE ── */}
-      <section className="py-12 sm:py-24">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <motion.div
-            {...fade}
-            className="overflow-hidden rounded-3xl border border-[rgb(var(--border))] bg-white p-5 shadow-soft sm:p-10"
-          >
-            <div className="max-w-2xl">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-emerald-600 sm:text-sm">
-                The science
-              </p>
-              <h2 className="text-xl font-bold sm:text-3xl">
-                Why quizzes outperform re-reading
-              </h2>
-              <p className="mt-3 text-sm leading-relaxed text-[rgb(var(--muted))] sm:mt-4 sm:text-base">
-                When you pull information out of memory rather than recognizing it,
-                you strengthen the neural pathways you will need later. Short questions
-                with immediate feedback let you correct mistakes early and reinforce recall.
-              </p>
-            </div>
-            <div className="mt-6 grid grid-cols-2 gap-2.5 sm:mt-8 sm:gap-3">
-              {[
-                { label: "Retrieval over recognition", body: "Questions push you to produce answers, not just nod along.", bg: "bg-emerald-50" },
-                { label: "Feedback that teaches", body: "Explanations connect each choice back to the core idea.", bg: "bg-blue-50" },
-                { label: "Spaced repetition", body: "Retake quizzes over time to lock knowledge permanently.", bg: "bg-amber-50" },
-                { label: "Gamification works", body: "Points and streaks turn learning into a daily habit.", bg: "bg-rose-50" },
-              ].map((item) => (
-                <div
-                  key={item.label}
-                  className={`rounded-xl ${item.bg} p-3 sm:p-4`}
-                >
-                  <p className="text-xs font-semibold leading-snug text-[rgb(var(--foreground))] sm:text-sm">{item.label}</p>
-                  <p className="mt-1 text-[11px] leading-relaxed text-[rgb(var(--muted))] sm:text-xs">{item.body}</p>
+      {/* ── SOCIAL PROOF ─────────────────────────────────────── */}
+      {/* Only show live counters once they look credible (>50 quizzes). */}
+      {/* Below that threshold we just lean on the MetricStrip research stats. */}
+      {(quizCount >= 50 || userCount >= 20) && (
+        <section className="py-10 sm:py-16">
+          <div className="mx-auto max-w-3xl px-4 sm:px-6">
+            <motion.div
+              {...fade}
+              className="flex items-center justify-center gap-10 rounded-2xl border border-[rgb(var(--border))] bg-white px-6 py-8 text-center shadow-soft sm:gap-16 sm:px-10 sm:py-10"
+            >
+              {quizCount >= 50 && (
+                <div>
+                  <p className="text-3xl font-extrabold tabular-nums gradient-text sm:text-4xl">
+                    {quizCount.toLocaleString()}
+                  </p>
+                  <p className="mt-1 text-sm font-medium text-[rgb(var(--muted))]">
+                    quizzes generated
+                  </p>
                 </div>
-              ))}
-            </div>
-          </motion.div>
-        </div>
-      </section>
+              )}
+              {userCount >= 20 && (
+                <div>
+                  <p className="text-3xl font-extrabold tabular-nums gradient-text sm:text-4xl">
+                    {userCount.toLocaleString()}
+                  </p>
+                  <p className="mt-1 text-sm font-medium text-[rgb(var(--muted))]">
+                    learners joined
+                  </p>
+                </div>
+              )}
+              <div>
+                <p className="text-3xl font-extrabold tabular-nums gradient-text sm:text-4xl">
+                  100+
+                </p>
+                <p className="mt-1 text-sm font-medium text-[rgb(var(--muted))]">
+                  studies behind the method
+                </p>
+              </div>
+            </motion.div>
+          </div>
+        </section>
+      )}
 
-      {/* ── FAQ ── */}
+      {/* ── FAQ ──────────────────────────────────────────────── */}
       <section className="py-12 sm:py-24">
         <div className="mx-auto max-w-3xl px-4 sm:px-6">
           <motion.div {...fade} className="mb-6 text-center sm:mb-10">
@@ -282,7 +304,7 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* ── CTA ── */}
+      {/* ── CTA BANNER ───────────────────────────────────────── */}
       <section className="pb-16 pt-4 sm:pb-24 sm:pt-8">
         <div className="mx-auto max-w-4xl px-4 sm:px-6">
           <motion.div
@@ -290,12 +312,13 @@ export function LandingPage() {
             className="overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-500 to-teal-500 p-6 text-center text-white sm:p-14"
           >
             <h2 className="text-2xl font-extrabold sm:text-4xl">
-              Ready to level up your memory?
+              Ready to remember more?
             </h2>
             <p className="mx-auto mt-3 max-w-lg text-sm text-emerald-100 sm:mt-4 sm:text-base">
-              Join Memora and turn every study session into a game you want to play.
+              Three free quizzes a day. No credit card. Start building
+              real long-term memory in under a minute.
             </p>
-            <Link href="/dashboard" className="mt-6 inline-block sm:mt-8">
+            <Link href="/register" className="mt-6 inline-block sm:mt-8">
               <Button
                 type="button"
                 className="!bg-white !text-emerald-700 hover:!bg-emerald-50 !px-8 !py-3 !text-base !rounded-2xl !shadow-soft-md"
@@ -307,13 +330,29 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* ── FOOTER ── */}
-      <footer className="border-t border-[rgb(var(--border))] py-8 text-center text-sm text-[rgb(var(--muted))]">
-        <p>
-          © {new Date().getFullYear()}{" "}
-          <span className="font-semibold text-[rgb(var(--foreground))]">memora</span>
-          {" "}· Make knowledge stick.
-        </p>
+      {/* ── FOOTER ───────────────────────────────────────────── */}
+      <footer className="border-t border-[rgb(var(--border))] py-8">
+        <div className="mx-auto flex max-w-7xl flex-col items-center gap-4 px-4 sm:flex-row sm:justify-between sm:px-6">
+          <p className="text-sm text-[rgb(var(--muted))]">
+            © {new Date().getFullYear()}{" "}
+            <span className="font-semibold text-[rgb(var(--foreground))]">memora</span>
+            {" "}· Make knowledge stick.
+          </p>
+          <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-[rgb(var(--muted))]">
+            <Link href="/login" className="hover:text-[rgb(var(--foreground))] transition-colors">
+              Sign in
+            </Link>
+            <Link href="/contact" className="hover:text-[rgb(var(--foreground))] transition-colors">
+              Contact
+            </Link>
+            <Link href="/privacy" className="hover:text-[rgb(var(--foreground))] transition-colors">
+              Privacy
+            </Link>
+            <Link href="/terms" className="hover:text-[rgb(var(--foreground))] transition-colors">
+              Terms
+            </Link>
+          </div>
+        </div>
       </footer>
     </div>
   );

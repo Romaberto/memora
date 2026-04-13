@@ -102,3 +102,13 @@ model QuizAnswer {
 
   @@unique([quizSessionId, quizQuestionId])
 }
+
+/// Contact form submissions from /contact. Stored in the DB so they're
+/// queryable and don't depend on an external email provider.
+model ContactRequest {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  message   String
+  createdAt DateTime @default(now())
+}
