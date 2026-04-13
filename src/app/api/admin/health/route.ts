@@ -97,6 +97,9 @@ export async function GET() {
     }
   };
 
+  const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
   const [
     db,
     redis,
@@ -109,10 +112,13 @@ export async function GET() {
     activeUsers24h,
     avgScore24h,
     perMinuteRows,
+    usersToday,
+    usersThisWeek,
+    usersThisMonth,
   ] = await Promise.all([
     pingDb(),
     pingRedis(),
-    safeCount(prisma.user.count()),
+    safeCount(prisma.user.count({ where: { NOT: { email: "guest@memorize.local" } } })),
     safeCount(prisma.quizRequest.count({ where: { ...realQuiz, createdAt: { gte: startOfDay } } })),
     safeCount(prisma.quizRequest.count({ where: { ...realQuiz, createdAt: { gte: fiveMinAgo } } })),
     safeCount(prisma.quizRequest.count({ where: { ...realQuiz, createdAt: { gte: oneHourAgo } } })),
@@ -141,6 +147,10 @@ export async function GET() {
         orderBy: { createdAt: "asc" },
       }),
     ),
+    // Registration growth
+    safeCount(prisma.user.count({ where: { NOT: { email: "guest@memorize.local" }, createdAt: { gte: startOfDay } } })),
+    safeCount(prisma.user.count({ where: { NOT: { email: "guest@memorize.local" }, createdAt: { gte: oneWeekAgo } } })),
+    safeCount(prisma.user.count({ where: { NOT: { email: "guest@memorize.local" }, createdAt: { gte: oneMonthAgo } } })),
   ]);
 
   // Bucket per-minute timeline (60 buckets, oldest → newest).
@@ -159,6 +169,9 @@ export async function GET() {
     redis,
     metrics: {
       usersTotal,
+      usersToday,
+      usersThisWeek,
+      usersThisMonth,
       quizzesToday,
       quizzes5m,
       quizzes1h,

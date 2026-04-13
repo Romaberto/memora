@@ -19,6 +19,9 @@ type Health = {
   redis: { ok: boolean; configured: boolean; latencyMs: number | null; error?: string };
   metrics: {
     usersTotal: number | null;
+    usersToday: number | null;
+    usersThisWeek: number | null;
+    usersThisMonth: number | null;
     quizzesToday: number | null;
     quizzes5m: number | null;
     quizzes1h: number | null;
@@ -73,7 +76,7 @@ export function AdminHealthView() {
   }, [paused, fetchOnce]);
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-10">
+    <div>
       <header className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
@@ -130,9 +133,17 @@ export function AdminHealthView() {
         <Metric label="Quizzes · today" value={data?.metrics.quizzesToday} />
       </div>
 
+      {/* Registered users */}
       <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4">
-        <Metric label="Users · total" value={data?.metrics.usersTotal} />
-        <Metric label="Active users · 24h" value={data?.metrics.activeUsers24h} />
+        <Metric label="Registered users" value={data?.metrics.usersTotal} accent />
+        <Metric label="New users · today" value={data?.metrics.usersToday} />
+        <Metric label="New users · 7d" value={data?.metrics.usersThisWeek} />
+        <Metric label="New users · 30d" value={data?.metrics.usersThisMonth} />
+      </div>
+
+      {/* Activity */}
+      <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-3">
+        <Metric label="Active users · 24h" value={data?.metrics.activeUsers24h} accent />
         <Metric label="Sessions played · 24h" value={data?.metrics.sessions24h} />
         <Metric
           label="Avg score · 24h"

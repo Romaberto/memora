@@ -94,6 +94,8 @@ export async function GET(req: Request) {
   const sub = info.sub;
   const name = info.name?.trim() || info.given_name?.trim() || null;
   const picture = info.picture?.trim() || null;
+  // Capture country from Vercel's geo header (available on Vercel deployments)
+  const country = req.headers.get("x-vercel-ip-country")?.toUpperCase() || null;
 
   // Find or create the user.
   let user = await prisma.user.findUnique({ where: { googleId: sub } });
@@ -106,10 +108,11 @@ export async function GET(req: Request) {
         where: { id: byEmail.id },
         data: {
           googleId: sub,
-          // Don't clobber an existing avatar/name — only fill blanks.
+          // Don't clobber an existing avatar/name/country — only fill blanks.
           image: byEmail.image ?? picture,
           name: byEmail.name ?? name,
           emailVerified: byEmail.emailVerified ?? new Date(),
+          country: byEmail.country ?? country,
         },
       });
     } else {
@@ -122,6 +125,7 @@ export async function GET(req: Request) {
           image: picture,
           googleId: sub,
           emailVerified: new Date(),
+          country,
         },
       });
     }

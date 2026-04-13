@@ -91,6 +91,8 @@ export async function createCsvUser(
   email: string,
   passwordHash: string,
   name: string,
+  /** ISO 3166-1 alpha-2 country code from Vercel x-vercel-ip-country header */
+  country?: string | null,
 ): Promise<CsvUser> {
   const row = await prisma.user.create({
     data: {
@@ -99,6 +101,7 @@ export async function createCsvUser(
       name: name.trim(),
       nickname: "",
       image: "",
+      ...(country ? { country: country.toUpperCase() } : {}),
     },
     select: SELECT,
   });

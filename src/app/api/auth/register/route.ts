@@ -37,7 +37,9 @@ export async function POST(req: Request) {
 
   // Hash password and persist — createCsvUser now writes directly to Prisma
   const passwordHash = hashPassword(password);
-  const user = await createCsvUser(email, passwordHash, name);
+  // Capture country from Vercel's geo header (available on Vercel deployments)
+  const country = req.headers.get("x-vercel-ip-country") ?? null;
+  const user = await createCsvUser(email, passwordHash, name, country);
 
   // Issue session cookie
   const token = await createSessionToken(user.id);

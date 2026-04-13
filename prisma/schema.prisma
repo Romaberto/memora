@@ -29,6 +29,10 @@ model User {
   /// via Google OAuth. Nullable so password-only accounts remain valid.
   googleId      String?   @unique
   subscriptionTier String @default("free") // "free" | "pro"
+  /// ISO 3166-1 alpha-2 country code captured at registration from Vercel's
+  /// x-vercel-ip-country header (e.g. "US", "DE", "BR"). Null for users
+  /// created before this field existed or when the header is unavailable.
+  country       String?
   createdAt     DateTime  @default(now())
 
   quizRequests QuizRequest[]
