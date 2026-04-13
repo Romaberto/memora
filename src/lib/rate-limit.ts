@@ -65,6 +65,8 @@ function makeLimiter(purpose: string, requests: number, window: `${number} ${"s"
 
 let _generateQuizLimiter: Ratelimit | null | undefined;
 let _googleAuthLimiter: Ratelimit | null | undefined;
+let _authLimiter: Ratelimit | null | undefined;
+let _contactLimiter: Ratelimit | null | undefined;
 
 function generateQuizLimiter(): Ratelimit | null {
   if (_generateQuizLimiter === undefined) {
@@ -82,6 +84,23 @@ function googleAuthLimiter(): Ratelimit | null {
     _googleAuthLimiter = makeLimiter("oauth_google", 10, "1 m");
   }
   return _googleAuthLimiter;
+}
+
+function authLimiter(): Ratelimit | null {
+  if (_authLimiter === undefined) {
+    // 10 login/register attempts per minute per IP — tight enough to deter
+    // brute-force, generous enough for genuine mistyping.
+    _authLimiter = makeLimiter("auth", 10, "1 m");
+  }
+  return _authLimiter;
+}
+
+function contactLimiter(): Ratelimit | null {
+  if (_contactLimiter === undefined) {
+    // 5 contact submissions per minute per IP
+    _contactLimiter = makeLimiter("contact", 5, "1 m");
+  }
+  return _contactLimiter;
 }
 
 async function check(limiter: Ratelimit | null, key: string): Promise<RateLimitResult> {
@@ -105,6 +124,14 @@ export function ratelimitGenerateQuiz(key: string): Promise<RateLimitResult> {
 
 export function ratelimitGoogleAuth(key: string): Promise<RateLimitResult> {
   return check(googleAuthLimiter(), key);
+}
+
+export function ratelimitAuth(key: string): Promise<RateLimitResult> {
+  return check(authLimiter(), key);
+}
+
+export function ratelimitContact(key: string): Promise<RateLimitResult> {
+  return check(contactLimiter(), key);
 }
 
 /**

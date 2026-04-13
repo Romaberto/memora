@@ -346,10 +346,13 @@ export async function generateQuizPayload(
 
     let raw: string;
     try {
+      // Scale max_tokens based on question count (~150 tokens per question)
+      const maxTokens = Math.max(4000, input.questionCount * 150);
       raw = await ai.completeJson({
         system: QUIZ_SYSTEM_PROMPT,
         user: userPrompt + retryHint,
         jsonSchema: QUIZ_JSON_SCHEMA,
+        maxTokens,
       });
     } catch (err) {
       logDev(`OpenAI request failed (attempt ${attempt + 1}):`, err);

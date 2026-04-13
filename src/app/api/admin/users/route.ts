@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
   const page = Math.max(1, parseInt(url.searchParams.get("page") ?? "1", 10) || 1);
   const pageSize = Math.min(100, Math.max(1, parseInt(url.searchParams.get("pageSize") ?? "25", 10) || 25));
   const search = (url.searchParams.get("search") ?? "").trim();
-  const tierFilter = url.searchParams.get("tier") as "free" | "pro" | null;
+  const tierFilter = url.searchParams.get("tier");
   const sortParam = (url.searchParams.get("sort") ?? "createdAt") as SortField;
   const sort = ALLOWED_SORT.includes(sortParam) ? sortParam : "createdAt";
   const order = url.searchParams.get("order") === "asc" ? "asc" : "desc";

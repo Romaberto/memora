@@ -10,9 +10,19 @@ export const SESSION_COOKIE = "memorize.session";
 export const MAX_AGE_SECONDS = 30 * 24 * 60 * 60; // 30 days
 
 function secret(): Uint8Array {
-  const s =
-    process.env.SESSION_SECRET ??
-    "dev-secret-please-set-SESSION_SECRET-in-env-min-32-chars!!";
+  const s = process.env.SESSION_SECRET;
+  if (!s) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(
+        "SESSION_SECRET env var is required in production. " +
+        "Generate one with: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"",
+      );
+    }
+    // Dev-only fallback — never used in production.
+    return new TextEncoder().encode(
+      "dev-secret-please-set-SESSION_SECRET-in-env-min-32-chars!!",
+    );
+  }
   return new TextEncoder().encode(s);
 }
 

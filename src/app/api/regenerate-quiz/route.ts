@@ -5,6 +5,8 @@ import { createAIClient } from "@/lib/ai";
 import { generateQuizPayload } from "@/lib/quiz-generator";
 import { z } from "zod";
 import { isQuestionCount } from "@/lib/schemas/quiz";
+import { ratelimitGenerateQuiz } from "@/lib/rate-limit";
+import { canGenerateQuiz, createQuizRequestWithQuota, QuotaExceededError } from "@/lib/subscription";
 
 const bodySchema = z.object({
   fromQuizRequestId: z.string().min(1),
@@ -13,6 +15,21 @@ const bodySchema = z.object({
 export async function POST(req: Request) {
   const userId = await getSessionUserId();
   if (!userId) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+
+  // Rate limit
+  const rl = await ratelimitGenerateQuiz(`user:${userId}`);
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: "Too many requests. Please wait a moment." },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfterSeconds ?? 5) } },
+    );
+  }
+
+  // Quota pre-check
+  const quota = await canGenerateQuiz(userId);
+  if (!quota.allowed) {
+    return NextResponse.json({ error: quota.reason }, { status: 429 });
+  }
 
   let body: unknown;
   try {
@@ -49,9 +66,9 @@ export async function POST(req: Request) {
     },
   );
 
-  const quizRequest = await prisma.quizRequest.create({
-    data: {
-      userId,
+  let quizRequest;
+  try {
+    quizRequest = await createQuizRequestWithQuota(userId, {
       title: prev.title,
       summaryText: prev.summaryText,
       notes: prev.notes,
@@ -59,23 +76,19 @@ export async function POST(req: Request) {
       topic: payload.topic,
       generatedQuiz: JSON.stringify(payload),
       usedFallback,
-      questions: {
-        create: payload.questions.map((q, idx) => ({
-          order: idx,
-          question: q.question,
-          options: JSON.stringify(q.options),
-          correctIndex: q.correctIndex,
-          explanation: q.explanation,
-        })),
-      },
-    },
-    include: { questions: { orderBy: { order: "asc" } } },
-  }).catch((err: unknown) => {
+      questions: payload.questions.map((q, idx) => ({
+        order: idx,
+        question: q.question,
+        options: JSON.stringify(q.options),
+        correctIndex: q.correctIndex,
+        explanation: q.explanation,
+      })),
+    });
+  } catch (err) {
+    if (err instanceof QuotaExceededError) {
+      return NextResponse.json({ error: err.message }, { status: 429 });
+    }
     console.error("[regenerate-quiz] Failed to persist quiz:", err);
-    return null;
-  });
-
-  if (!quizRequest) {
     return NextResponse.json({ error: "Failed to save regenerated quiz. Please try again." }, { status: 500 });
   }
 

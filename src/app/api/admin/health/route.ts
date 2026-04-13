@@ -125,12 +125,11 @@ export async function GET() {
     safeCount(prisma.quizRequest.count({ where: { ...realQuiz, createdAt: { gte: oneDayAgo } } })),
     safeCount(prisma.quizSession.count({ where: { createdAt: { gte: oneDayAgo } } })),
     safeCount(
-      prisma.quizSession
-        .findMany({
-          where: { createdAt: { gte: oneDayAgo } },
-          select: { userId: true },
-        })
-        .then((rows) => new Set(rows.map((r) => r.userId)).size),
+      prisma.$queryRaw<[{ count: bigint }]>`
+        SELECT COUNT(DISTINCT "userId")::bigint AS count
+        FROM "QuizSession"
+        WHERE "createdAt" >= ${oneDayAgo}
+      `.then((rows) => Number(rows[0]?.count ?? 0)),
     ),
     safeCount(
       prisma.quizSession.aggregate({

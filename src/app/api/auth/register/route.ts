@@ -4,6 +4,7 @@ import { z } from "zod";
 import { findByEmail, createCsvUser } from "@/lib/csv-users";
 import { hashPassword } from "@/lib/password";
 import { createSessionToken, sessionCookieAttrs } from "@/lib/session";
+import { getClientIp, ratelimitAuth } from "@/lib/rate-limit";
 
 const schema = z.object({
   name: z.string().min(1).max(100).trim(),
@@ -12,6 +13,15 @@ const schema = z.object({
 });
 
 export async function POST(req: Request) {
+  // Rate limit by IP
+  const ip = getClientIp(req);
+  const rl = await ratelimitAuth(`ip:register:${ip}`);
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: "Too many attempts. Please wait a moment and try again." },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfterSeconds ?? 5) } },
+    );
+  }
   let body: unknown;
   try {
     body = await req.json();
@@ -36,7 +46,7 @@ export async function POST(req: Request) {
   }
 
   // Hash password and persist — createCsvUser now writes directly to Prisma
-  const passwordHash = hashPassword(password);
+  const passwordHash = await hashPassword(password);
   // Capture country from Vercel's geo header (available on Vercel deployments)
   const country = req.headers.get("x-vercel-ip-country") ?? null;
   const user = await createCsvUser(email, passwordHash, name, country);

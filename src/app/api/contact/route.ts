@@ -8,7 +8,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import prisma from "@/lib/db";
-import { getClientIp, ratelimitGoogleAuth } from "@/lib/rate-limit";
+import { getClientIp, ratelimitContact } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -19,9 +19,8 @@ const contactSchema = z.object({
 });
 
 export async function POST(req: Request) {
-  // Reuse the Google Auth limiter (10/min/IP) — same ballpark for contact form
   const ip = getClientIp(req);
-  const rl = await ratelimitGoogleAuth(`ip:contact:${ip}`);
+  const rl = await ratelimitContact(`ip:${ip}`);
   if (!rl.success) {
     return NextResponse.json(
       { error: "Too many requests. Please wait a moment and try again." },

@@ -39,7 +39,7 @@ export function getAllowedQuestionCounts(tier: SubscriptionTier): number[] {
 
 export async function getDailyQuizCount(userId: string): Promise<number> {
   const startOfDay = new Date();
-  startOfDay.setHours(0, 0, 0, 0);
+  startOfDay.setUTCHours(0, 0, 0, 0);
 
   return prisma.quizRequest.count({
     where: {
@@ -110,7 +110,7 @@ export async function createQuizRequestWithQuota(
   const tier = await getUserSubscription(userId);
   const limit = tier === "pro" ? PRO_DAILY_QUIZ_LIMIT : FREE_DAILY_QUIZ_LIMIT;
   const startOfDay = new Date();
-  startOfDay.setHours(0, 0, 0, 0);
+  startOfDay.setUTCHours(0, 0, 0, 0);
 
   try {
     return await prisma.$transaction(

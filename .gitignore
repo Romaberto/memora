@@ -43,3 +43,4 @@ skills-lock.json
 
 # typescript incremental build cache
 tsconfig.tsbuildinfo
+.env.bak.preflight

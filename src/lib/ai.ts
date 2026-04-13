@@ -22,6 +22,8 @@ export type ChatCompletionArgs = {
   model?: string;
   /** When set, request strict JSON-schema response_format. */
   jsonSchema?: JsonSchema;
+  /** Override default max_tokens (default: 4000). */
+  maxTokens?: number;
 };
 
 /**
@@ -45,9 +47,7 @@ class OpenAIAdapter implements AIClient {
   async completeJson(args: ChatCompletionArgs): Promise<string> {
     const model = args.model ?? this.defaultModel;
 
-    // 4000 tokens is enough for 30+ questions with explanations. The old
-    // 16k ceiling never helped — the model emits what it emits — but it did
-    // create a worst-case cost/timeout footgun.
+    const maxTokens = args.maxTokens ?? 4_000;
     const responseFormat = args.jsonSchema
       ? ({
           type: "json_schema" as const,
@@ -63,7 +63,7 @@ class OpenAIAdapter implements AIClient {
       {
         model,
         temperature: 0.35,
-        max_tokens: 4_000,
+        max_tokens: maxTokens,
         response_format: responseFormat,
         messages: [
           { role: "system", content: args.system },

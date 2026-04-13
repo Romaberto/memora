@@ -31,7 +31,15 @@ export async function POST(req: Request) {
   const user = await findById(userId);
   if (!user) return NextResponse.json({ error: "User not found." }, { status: 404 });
 
-  if (!verifyPassword(currentPassword, user.passwordHash)) {
+  // Google-only accounts have no password set — reject gracefully
+  if (!user.passwordHash) {
+    return NextResponse.json(
+      { error: "Your account uses Google sign-in. Password change is not available." },
+      { status: 400 },
+    );
+  }
+
+  if (!(await verifyPassword(currentPassword, user.passwordHash))) {
     return NextResponse.json({ error: "Current password is incorrect." }, { status: 401 });
   }
 
@@ -42,6 +50,6 @@ export async function POST(req: Request) {
     );
   }
 
-  await updateUser(userId, { passwordHash: hashPassword(newPassword) });
+  await updateUser(userId, { passwordHash: await hashPassword(newPassword) });
   return NextResponse.json({ ok: true });
 }

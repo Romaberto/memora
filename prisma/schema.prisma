@@ -62,6 +62,9 @@ model QuizRequest {
   sessions  QuizSession[]
 
   createdAt DateTime @default(now())
+
+  // Composite index for daily quota queries (userId + usedFallback + createdAt)
+  @@index([userId, usedFallback, createdAt])
 }
 
 model QuizQuestion {
@@ -96,6 +99,9 @@ model QuizSession {
   answers QuizAnswer[]
 
   createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([userId])
 }
 
 model QuizAnswer {
