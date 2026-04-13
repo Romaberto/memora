@@ -30,12 +30,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <GoogleAnalytics />
-      </head>
       <body
         className={`${inter.variable} ${mono.variable} min-h-screen font-sans antialiased`}
       >
+        <GoogleAnalytics />
         <Providers>
           <div className="flex min-h-screen flex-col">
             <SiteHeader />
