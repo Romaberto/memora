@@ -3,13 +3,12 @@ import { requireUserId } from "@/lib/auth";
 import { rankFromPercentage } from "@/lib/ranks";
 import { getLeaderboard, findUserRank } from "@/lib/leaderboard";
 import { getUserSubscription, getDailyQuizCount, FREE_DAILY_QUIZ_LIMIT } from "@/lib/subscription";
-import { getTopics, getUserInterestedTopicSlugs } from "@/lib/topics";
+import { getRecommendedQuizzes } from "@/lib/topics";
 import {
   DashboardView,
   type DashboardRequestRow,
   type DashboardSessionRow,
 } from "@/components/dashboard/dashboard-view";
-import { TopicStrip } from "@/components/dashboard/topic-strip";
 
 const nonFallbackRequest = { usedFallback: false } as const;
 
@@ -25,8 +24,8 @@ export default async function DashboardPage() {
   ]);
 
   // Fetch all dashboard + leaderboard data in parallel
-  const [guest, dashboardData, leaderboardEntries, allTopics, interestedSlugs] = await Promise.all([
-    prisma.user.findUnique({ where: { id: userId }, select: { name: true } }),
+  const [guest, dashboardData, leaderboardEntries, recommendedQuizzes, waitlistRow] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId }, select: { name: true, email: true } }),
 
     Promise.all([
       prisma.quizRequest.findMany({
@@ -60,8 +59,13 @@ export default async function DashboardPage() {
     }),
 
     getLeaderboard("alltime", 10).catch(() => []),
-    getTopics().catch(() => []),
-    getUserInterestedTopicSlugs(userId).catch(() => []),
+    // 1 hero + 3 alternates — see RecommendedQuizzes component.
+    getRecommendedQuizzes(userId, 4).catch(() => []),
+    // Waitlist status — used to switch the upsell CTA to a persistent
+    // "you're on the list" state.
+    prisma.waitlistSignup
+      .findFirst({ where: { userId }, select: { id: true } })
+      .catch(() => null),
   ]);
 
   if (!dashboardData) {
@@ -110,23 +114,7 @@ export default async function DashboardPage() {
   const overallRank = avgPct != null ? rankFromPercentage(Math.round(avgPct)) : null;
   const userRank    = findUserRank(leaderboardEntries, userId);
 
-  const interestSet = new Set(interestedSlugs);
-  const topicChips = allTopics
-    .filter((t) => t.quizCount > 0)
-    .map((t) => ({ slug: t.slug, name: t.name, icon: t.icon, quizCount: t.quizCount }))
-    .sort((a, b) => {
-      const aInt = interestSet.has(a.slug) ? 0 : 1;
-      const bInt = interestSet.has(b.slug) ? 0 : 1;
-      return aInt - bInt;
-    });
-
   return (
-    <>
-    {topicChips.length > 0 && (
-      <div className="mx-auto max-w-4xl px-4 pt-6 sm:px-6">
-        <TopicStrip topics={topicChips} />
-      </div>
-    )}
     <DashboardView
       userName={guest?.name ?? "Guest"}
       requests={requestRows}
@@ -135,6 +123,9 @@ export default async function DashboardPage() {
       subscriptionTier={subscriptionTier}
       dailyQuizCount={dailyQuizCount}
       dailyQuizLimit={subscriptionTier === "free" ? FREE_DAILY_QUIZ_LIMIT : Infinity}
+      recommendedQuizzes={recommendedQuizzes}
+      userEmail={guest?.email ?? null}
+      alreadyOnWaitlist={Boolean(waitlistRow)}
       stats={{ totalSessions, avgPercentage: avgPct, sessionsLast7Days: recentCount, overallRank, avgSecondsPerQuestion, estimatedTenQuestionSeconds }}
       leaderboard={{
         entries: leaderboardEntries,
@@ -143,6 +134,5 @@ export default async function DashboardPage() {
         userTotalPoints: leaderboardEntries.find((e) => e.userId === userId)?.totalPoints ?? 0,
       }}
     />
-    </>
   );
 }

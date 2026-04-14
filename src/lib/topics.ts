@@ -88,6 +88,87 @@ export async function getUserInterestedTopicSlugs(userId: string): Promise<strin
   return interests.map((i) => i.topic.slug);
 }
 
+export type RecommendedQuiz = {
+  id: string;              // PremadeQuiz.id (for routing)
+  title: string;
+  questionCount: number;
+  quizNumber: number;
+  topic: {
+    slug: string;
+    name: string;
+    icon: string | null;
+    color: string | null;
+  };
+};
+
+/**
+ * Recommend pre-made quizzes for a user based on their topic interests.
+ * Picks quizzes from interested topics that the user hasn't completed yet,
+ * interleaved across topics for variety.
+ */
+export async function getRecommendedQuizzes(
+  userId: string,
+  limit = 6,
+): Promise<RecommendedQuiz[]> {
+  const interests = await prisma.userTopicInterest.findMany({
+    where: { userId },
+    select: { topicId: true },
+  });
+  if (interests.length === 0) return [];
+
+  const topicIds = interests.map((i) => i.topicId);
+
+  // All premade quizzes in user's interested topics
+  const premade = await prisma.premadeQuiz.findMany({
+    where: { topicId: { in: topicIds } },
+    include: {
+      topic: { select: { slug: true, name: true, icon: true, color: true } },
+      quizRequest: { select: { questionCount: true } },
+    },
+    orderBy: { quizNumber: "asc" },
+  });
+
+  // Exclude quizzes the user has already played
+  const played = await prisma.quizSession.findMany({
+    where: {
+      userId,
+      quizRequestId: { in: premade.map((p) => p.quizRequestId) },
+    },
+    select: { quizRequestId: true },
+  });
+  const playedSet = new Set(played.map((s) => s.quizRequestId));
+  const available = premade.filter((p) => !playedSet.has(p.quizRequestId));
+
+  // Interleave by topic for variety: round-robin one quiz per topic at a time
+  const byTopic = new Map<string, typeof available>();
+  for (const q of available) {
+    if (!byTopic.has(q.topicId)) byTopic.set(q.topicId, []);
+    byTopic.get(q.topicId)!.push(q);
+  }
+  const lists = Array.from(byTopic.values());
+  const interleaved: typeof available = [];
+  let added = true;
+  while (interleaved.length < limit && added) {
+    added = false;
+    for (const list of lists) {
+      const next = list.shift();
+      if (next) {
+        interleaved.push(next);
+        added = true;
+        if (interleaved.length >= limit) break;
+      }
+    }
+  }
+
+  return interleaved.map((q) => ({
+    id: q.id,
+    title: q.title,
+    questionCount: q.quizRequest.questionCount,
+    quizNumber: q.quizNumber,
+    topic: q.topic,
+  }));
+}
+
 export async function getPremadeQuizById(premadeQuizId: string) {
   return prisma.premadeQuiz.findUnique({
     where: { id: premadeQuizId },

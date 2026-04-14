@@ -43,6 +43,21 @@ export async function POST(req: Request) {
     );
   }
 
+  // F2P restructure: free tier cannot generate custom quizzes. The dashboard
+  // UI hides the form for free users, but we still gate server-side so
+  // curl/bypass attempts fail cleanly with an upgrade hint.
+  const tier = await getUserSubscription(userId);
+  if (tier === "free") {
+    return NextResponse.json(
+      {
+        error:
+          "Custom quizzes are part of our paid plans. Join the waitlist to be notified when they launch.",
+        upgradeRequired: true,
+      },
+      { status: 403 },
+    );
+  }
+
   // Soft daily-quota check — fast, no lock. Avoids burning an OpenAI call
   // for users who are already over their limit (the UI normally disables
   // the button, but a curl request would skip that). The strict version
@@ -70,8 +85,8 @@ export async function POST(req: Request) {
   const { title, summaryText, notes, questionCount, debugIncludePrompt } =
     parsed.data;
 
-  // Enforce question count limits based on subscription
-  const tier = await getUserSubscription(userId);
+  // Enforce question count limits based on subscription. `tier` is already
+  // fetched above for the free-tier gate.
   if (!isQuestionCountAllowed(tier, questionCount)) {
     return NextResponse.json(
       { error: "Upgrade to Pro to unlock more than 10 questions per quiz.", upgradeRequired: true },

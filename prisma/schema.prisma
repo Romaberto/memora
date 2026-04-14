@@ -180,3 +180,19 @@ model ContactRequest {
   message   String
   createdAt DateTime @default(now())
 }
+
+// ─── Waitlist ────────────────────────────────────────────────────────────────
+
+/// Emails captured from free-tier users interested in paid features (custom
+/// quiz generation, advanced plans). `source` identifies where the signup
+/// came from so we can segment later. `userId` is set when the user is
+/// logged in at capture time — null for logged-out signups.
+model WaitlistSignup {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  userId    String?
+  source    String   @default("custom_quiz_gate")
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}

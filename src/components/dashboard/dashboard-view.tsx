@@ -16,6 +16,9 @@ import { UserAvatar } from "@/components/user-avatar";
 import type { LeaderboardEntry } from "@/lib/leaderboard";
 import { getLeague, getNextLeague, leagueProgress, LEAGUES } from "@/lib/leagues";
 import type { League } from "@/lib/leagues";
+import type { RecommendedQuiz } from "@/lib/topics";
+import { RecommendedQuizzes } from "@/components/dashboard/recommended-quizzes";
+import { CustomQuizzesCard } from "@/components/dashboard/custom-quizzes-card";
 
 // ─── icons ───────────────────────────────────────────────────────────────────
 
@@ -494,6 +497,9 @@ type Props = {
   subscriptionTier: "free" | "pro";
   dailyQuizCount: number;
   dailyQuizLimit: number;
+  recommendedQuizzes: RecommendedQuiz[];
+  userEmail: string | null;
+  alreadyOnWaitlist: boolean;
   stats: {
     totalSessions: number;
     avgPercentage: number | null;
@@ -527,6 +533,9 @@ export function DashboardView({
   subscriptionTier,
   dailyQuizCount,
   dailyQuizLimit,
+  recommendedQuizzes,
+  userEmail,
+  alreadyOnWaitlist,
   stats,
   leaderboard,
 }: Props) {
@@ -676,35 +685,48 @@ export function DashboardView({
   return (
     <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6">
 
-      {/* ── Page header + compact stat strip ──────────────────────────── */}
+      {/* ── Greeting + stats — stats on the right of the name ─────────── */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
             Welcome back{userName ? `, ${userName.split(" ")[0]}` : ""}
           </h1>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Turn your notes into retrieval practice.
+            {subscriptionTier === "free"
+              ? "Pick a quiz below to sharpen your memory."
+              : "Turn your notes into retrieval practice."}
           </p>
         </div>
 
-        {/* Stat pills — glanceable hero numbers, right-aligned on desktop */}
-        <div className="flex flex-wrap gap-2 sm:justify-end">
-          <LeaguePill totalPoints={leaderboard.userTotalPoints} />
-          <StatPill
-            label="Avg score"
-            value={
-              stats.avgPercentage != null
-                ? `${Math.round(stats.avgPercentage)}%`
-                : "—"
-            }
-            accent={stats.avgPercentage != null && stats.avgPercentage >= 70}
-          />
-          <StatPill label="Quizzes" value={stats.totalSessions} />
-          <StatPill label="This week" value={stats.sessionsLast7Days} />
-        </div>
+        {stats.totalSessions === 0 ? (
+          <p className="max-w-xs rounded-xl border border-dashed border-slate-200 bg-white/60 px-4 py-2.5 text-xs leading-relaxed text-slate-500 sm:text-right dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400">
+            You haven&apos;t played yet — your rank will appear here.
+          </p>
+        ) : (
+          <div className="flex flex-wrap gap-2 sm:justify-end">
+            <LeaguePill totalPoints={leaderboard.userTotalPoints} />
+            <StatPill
+              label="Avg score"
+              value={
+                stats.avgPercentage != null
+                  ? `${Math.round(stats.avgPercentage)}%`
+                  : "—"
+              }
+              accent={stats.avgPercentage != null && stats.avgPercentage >= 70}
+            />
+            <StatPill label="Quizzes" value={stats.totalSessions} />
+            <StatPill label="This week" value={stats.sessionsLast7Days} />
+          </div>
+        )}
       </div>
 
-      {/* ── Generate quiz — hero card ──────────────────────────────────── */}
+      {/* ── Picked for you — hero + alternates ─────────────────────────── */}
+      {recommendedQuizzes.length > 0 && (
+        <RecommendedQuizzes quizzes={recommendedQuizzes} />
+      )}
+
+      {/* ── Generate quiz — paid tiers only ────────────────────────────── */}
+      {subscriptionTier !== "free" && (
       <Card className="border-accent/40 bg-gradient-to-br from-accent/[0.06] via-transparent to-transparent dark:border-accent/50 dark:from-accent/[0.10]">
         {!formExpanded ? (
           // ── Collapsed state — returning users: quick-entry trigger ────
@@ -722,9 +744,7 @@ export function DashboardView({
                 Drop in something new to remember →
               </p>
               <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                {subscriptionTier === "free"
-                  ? `${dailyQuizCount}/${dailyQuizLimit} free quizzes today`
-                  : "Unlimited generations."}
+                Unlimited generations.
               </p>
             </div>
             <span className="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl bg-accent px-4 text-sm font-semibold text-white shadow-sm transition-transform duration-150 ease-out group-hover:bg-emerald-600 group-active:scale-[0.97]">
@@ -803,14 +823,9 @@ export function DashboardView({
                   }
                   className="h-[46px] w-full appearance-none rounded-xl border border-[rgb(var(--border))] bg-white px-3 py-2 pr-8 text-base text-[rgb(var(--foreground))] outline-none ring-accent/30 focus:border-accent focus:ring-2 sm:h-[42px] sm:text-sm"
                 >
-                  {QUESTION_COUNTS.map((n) => {
-                    const locked = subscriptionTier === "free" && n > 10;
-                    return (
-                      <option key={n} value={n} disabled={locked}>
-                        {n}{locked ? " — Pro" : ""}
-                      </option>
-                    );
-                  })}
+                  {QUESTION_COUNTS.map((n) => (
+                    <option key={n} value={n}>{n}</option>
+                  ))}
                 </select>
                 <svg className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[rgb(var(--muted))]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></svg>
               </div>
@@ -922,34 +937,27 @@ export function DashboardView({
             </div>
           ) : null}
 
-          {/* Daily limit indicator for free users */}
-          {subscriptionTier === "free" && (
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-[rgb(var(--muted))]">
-                {dailyQuizCount}/{dailyQuizLimit} free quizzes today
-              </span>
-              {dailyQuizCount >= dailyQuizLimit && (
-                <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-700">
-                  Limit reached
-                </span>
-              )}
-            </div>
-          )}
-
           {/* CTA — full-width, prominent */}
           <Button
             type="submit"
-            disabled={loading || (subscriptionTier === "free" && dailyQuizCount >= dailyQuizLimit)}
+            disabled={loading}
             className="w-full sm:w-auto sm:px-8"
           >
-            {subscriptionTier === "free" && dailyQuizCount >= dailyQuizLimit
-              ? "Daily limit reached"
-              : loading ? "Generating…" : "Generate quiz →"}
+            {loading ? "Generating…" : "Generate quiz →"}
           </Button>
         </form>
           </>
         )}
       </Card>
+      )}
+
+      {/* ── Custom quizzes — free-tier upsell + waitlist capture ──────── */}
+      {subscriptionTier === "free" && (
+        <CustomQuizzesCard
+          userEmail={userEmail}
+          alreadyOnWaitlist={alreadyOnWaitlist}
+        />
+      )}
 
       {/* ── Daily progress ─────────────────────────────────────────────── */}
       <DailyProgressDashboard
