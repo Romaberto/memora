@@ -1,6 +1,6 @@
 import { requireUserId } from "@/lib/auth";
 import { findById } from "@/lib/csv-users";
-import { rankFromPercentage } from "@/lib/ranks";
+import { getLeague } from "@/lib/leagues";
 import prisma from "@/lib/db";
 import { ProfileView } from "./profile-view";
 
@@ -30,6 +30,7 @@ export default async function ProfilePage() {
     sessionsLast30,
     streakRow,
     paceRows,
+    pointsRow,
   ] = await Promise.all([
     prisma.quizSession.count({ where: sessionWhere }),
     prisma.quizSession.aggregate({ where: sessionWhere, _avg: { percentage: true } }),
@@ -42,7 +43,11 @@ export default async function ProfilePage() {
       select: { durationSeconds: true, questionCount: true },
       take: 1000,
     }),
+    prisma.quizSession.aggregate({ where: sessionWhere, _sum: { score: true } }),
   ]);
+
+  const totalPoints = pointsRow._sum.score ?? 0;
+  const league = getLeague(totalPoints);
 
   let paceSeconds = 0, paceQs = 0;
   for (const p of paceRows) {
@@ -69,12 +74,13 @@ export default async function ProfilePage() {
         totalSessions,
         avgPercentage: avgPct,
         bestPercentage: bestPct,
-        overallRank: avgPct != null ? rankFromPercentage(Math.round(avgPct)) : null,
+        totalPoints,
         sessionsLast7,
         sessionsLast30,
         maxStreak: streakRow._max.streakMax ?? 0,
         avgSecondsPerQuestion: paceQs > 0 ? paceSeconds / paceQs : null,
       }}
+      league={league}
     />
   );
 }

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { UserAvatar } from "@/components/user-avatar";
 import { formatDurationHuman } from "@/lib/format-quiz-clock";
+import type { League } from "@/lib/leagues";
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
@@ -23,14 +24,14 @@ type ProfileStats = {
   totalSessions: number;
   avgPercentage: number | null;
   bestPercentage: number | null;
-  overallRank: string | null;
+  totalPoints: number;
   sessionsLast7: number;
   sessionsLast30: number;
   maxStreak: number;
   avgSecondsPerQuestion: number | null;
 };
 
-type Props = { user: ProfileUser; stats: ProfileStats };
+type Props = { user: ProfileUser; stats: ProfileStats; league: League };
 
 // ─── small helpers ────────────────────────────────────────────────────────────
 
@@ -93,7 +94,7 @@ function CheckIcon() {
 
 // ─── main component ───────────────────────────────────────────────────────────
 
-export function ProfileView({ user, stats }: Props) {
+export function ProfileView({ user, stats, league }: Props) {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -253,11 +254,18 @@ export function ProfileView({ user, stats }: Props) {
           <UserAvatar src={avatarUrl || null} name={displayName} size="md" />
           <div className="leading-tight">
             <p className="text-sm font-semibold">{name || user.email}</p>
-            {nickname && (
-              <p className="text-xs text-slate-500">@{nickname}</p>
-            )}
+            <Link
+              href="/leaderboard"
+              className={`mt-0.5 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold transition-opacity duration-150 ease-out hover:opacity-80 ${league.bg} ${league.color}`}
+              title={`${stats.totalPoints.toLocaleString()} points`}
+            >
+              <span aria-hidden>{league.icon}</span>
+              <span>{league.name}</span>
+            </Link>
             {memberDate && (
-              <p className="text-xs text-slate-400">Member since {memberDate}</p>
+              <p className="mt-0.5 text-xs text-slate-400">
+                {nickname ? `@${nickname} · ` : ""}Member since {memberDate}
+              </p>
             )}
           </div>
         </div>
@@ -482,9 +490,10 @@ export function ProfileView({ user, stats }: Props) {
             ) : (
               <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 <StatCard
-                  label="Current rank"
-                  value={stats.overallRank ?? "–"}
-                  accent={!!stats.overallRank}
+                  label="Total points"
+                  value={stats.totalPoints.toLocaleString()}
+                  sub="lifetime"
+                  accent
                 />
                 <StatCard
                   label="Avg accuracy"
