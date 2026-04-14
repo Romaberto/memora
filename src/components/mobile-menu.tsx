@@ -47,7 +47,7 @@ export function MobileMenu({ user }: { user: MobileUser }) {
   }
 
   return (
-    <div className="sm:hidden">
+    <div className="md:hidden">
       <button
         type="button"
         aria-label={open ? "Close menu" : "Open menu"}

@@ -38,7 +38,7 @@ export async function NavActions() {
     return (
       <>
         {/* Desktop */}
-        <div className="hidden items-center gap-1 sm:flex">
+        <div className="hidden items-center gap-1 md:flex">
           <NavLink href="/topics">Topics</NavLink>
           <NavLink href="/leaderboard">Leaderboard</NavLink>
           <div className="ml-2 h-5 w-px bg-slate-200 dark:bg-slate-700" />
@@ -56,7 +56,7 @@ export async function NavActions() {
           </Link>
         </div>
 
-        {/* Mobile */}
+        {/* Mobile + Tablet */}
         <MobileMenu user={null} />
       </>
     );
@@ -67,7 +67,7 @@ export async function NavActions() {
   return (
     <>
       {/* Desktop */}
-      <div className="hidden items-center gap-1 sm:flex">
+      <div className="hidden items-center gap-1 md:flex">
         <NavLink href="/dashboard">Dashboard</NavLink>
         <NavLink href="/topics">Topics</NavLink>
         <NavLink href="/leaderboard">Leaderboard</NavLink>
@@ -93,8 +93,8 @@ export async function NavActions() {
         <LogoutButton />
       </div>
 
-      {/* Mobile */}
-      <div className="flex items-center gap-1 sm:hidden">
+      {/* Mobile + Tablet */}
+      <div className="flex items-center gap-1 md:hidden">
         <Link
           href="/profile"
           aria-label={`${displayName} — your profile`}
