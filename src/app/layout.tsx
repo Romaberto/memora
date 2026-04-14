@@ -19,7 +19,7 @@ const mono = JetBrains_Mono({
 
 
 export const metadata: Metadata = {
-  title: "Memora — Make Knowledge Stick",
+  title: "Memora | Make Your Knowledge Stick",
   description:
     "Turn what you read into what you remember. AI-powered quizzes that train your memory with retrieval practice.",
 };

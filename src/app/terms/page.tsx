@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Terms of Service — Memora",
+  title: "Terms of Service | Memora",
 };
 
 export default function TermsPage() {
@@ -124,7 +124,7 @@ export default function TermsPage() {
         <section>
           <h2 className="mb-2 text-base font-semibold text-[rgb(var(--foreground))]">15. Termination</h2>
           <p>We may suspend or terminate your access to the Service at any time, with or without cause, with or without notice, at our sole discretion. Grounds for termination include, but are not limited to, violation of these Terms, fraudulent or abusive activity, non-payment, or extended inactivity.</p>
-          <p>Upon termination: (a) your right to use the Service ceases immediately; (b) we may delete your account data after a reasonable retention period (typically 30 days); (c) any outstanding payment obligations survive; (d) all provisions that by their nature should survive termination — including disclaimers (Section 11), limitation of liability (Section 12), indemnification (Section 13), dispute resolution (Section 14), and governing law (Section 16) — will remain in full force and effect.</p>
+          <p>Upon termination: (a) your right to use the Service ceases immediately; (b) we may delete your account data after a reasonable retention period (typically 30 days); (c) any outstanding payment obligations survive; (d) all provisions that by their nature should survive termination, including disclaimers (Section 11), limitation of liability (Section 12), indemnification (Section 13), dispute resolution (Section 14), and governing law (Section 16), will remain in full force and effect.</p>
           <p>You may terminate your account at any time by contacting us. Termination does not entitle you to a refund of any prepaid fees except as expressly provided herein or as required by law.</p>
         </section>
 

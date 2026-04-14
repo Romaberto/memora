@@ -46,7 +46,7 @@ export function PricingWaitlistCta({
           </h3>
           <p className="mt-2 max-w-xl text-sm leading-relaxed text-[rgb(var(--muted))]">
             Leave your email and we’ll ping you the moment custom quizzes go
-            live — with a discount only the waitlist gets. One email. No spam.
+            live, with a discount only the waitlist gets. One email. No spam.
           </p>
         </div>
 

@@ -9,10 +9,10 @@ export const ROUND_LABELS: readonly {
   subtitle: string;
   boss: boolean;
 }[] = [
-  { title: "Round 1", subtitle: "Warm-up — find your footing.", boss: false },
-  { title: "Round 2", subtitle: "Heat rising — stay sharp.", boss: false },
+  { title: "Round 1", subtitle: "Warm-up. Find your footing.", boss: false },
+  { title: "Round 2", subtitle: "Heat rising. Stay sharp.", boss: false },
   { title: "Round 3", subtitle: "Elite challenge.", boss: false },
-  { title: "Final boss", subtitle: "Last stand — bring it home.", boss: true },
+  { title: "Final boss", subtitle: "Last stand. Bring it home.", boss: true },
 ];
 
 /**

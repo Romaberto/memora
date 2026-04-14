@@ -98,8 +98,8 @@ export default async function PricingPage() {
             renewing at the end of the year; you keep access until then.
           </FaqItem>
           <FaqItem q="Will the free tier always be free?">
-            Always. All 25 topic libraries with 10 quizzes each — about 250
-            quizzes — stay free with full leaderboard and streak support.
+            Always. All 25 topic libraries with 10 quizzes each, about 250
+            quizzes, stay free with full leaderboard and streak support.
           </FaqItem>
           <FaqItem q="What happens if I downgrade?">
             You keep your history and scores. Custom-quiz generation pauses,

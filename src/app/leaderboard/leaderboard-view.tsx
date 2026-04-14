@@ -366,7 +366,7 @@ export function LeaderboardView({ entries, currentUserId, userRank, period, init
               </p>
               <p className="mt-2 text-sm text-slate-500">
                 {period === "alltime"
-                  ? "Be the first — complete a quiz to claim the #1 spot."
+                  ? "Be the first. Complete a quiz to claim the #1 spot."
                   : `Nobody has completed a quiz ${period === "week" ? "this week" : "this month"} yet.`}
               </p>
               <Link
@@ -382,7 +382,7 @@ export function LeaderboardView({ entries, currentUserId, userRank, period, init
             <div className="rounded-2xl border border-accent/30 bg-accent/[0.05] px-8 py-10 text-center dark:border-accent/40 dark:bg-accent/[0.08]">
               <p className="text-2xl">🏆</p>
               <p className="mt-2 text-base font-semibold text-slate-800 dark:text-slate-100">
-                You&apos;re #1 — and the only player!
+                You&apos;re #1, and the only player!
               </p>
               <p className="mt-1 text-sm text-slate-500">
                 Invite others to register and compete.
@@ -494,10 +494,10 @@ export function LeaderboardView({ entries, currentUserId, userRank, period, init
                         {e.quizCount}
                       </span>
                       <span className="hidden text-right text-sm tabular-nums text-slate-600 dark:text-slate-400 sm:block">
-                        {e.avgAccuracy != null ? `${Math.round(e.avgAccuracy)}%` : "\u2014"}
+                        {e.avgAccuracy != null ? `${Math.round(e.avgAccuracy)}%` : "\u2013"}
                       </span>
                       <span className="hidden text-right text-sm tabular-nums text-slate-600 dark:text-slate-400 sm:block">
-                        {e.bestStreak > 0 ? `${e.bestStreak} \u2713` : "\u2014"}
+                        {e.bestStreak > 0 ? `${e.bestStreak} \u2713` : "\u2013"}
                       </span>
                     </li>
                   );

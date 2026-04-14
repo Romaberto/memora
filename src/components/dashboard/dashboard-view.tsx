@@ -90,30 +90,28 @@ function EditorialStats({
   const weekLine =
     sessionsLast7Days > 0 ? `${sessionsLast7Days} this week` : null;
 
+  // Stats are split across two lines instead of being joined with an
+  // em-dash on a single oversized line. The league name stays editorial
+  // (big, league-colored); the numbers drop to metadata weight beneath.
+  // Fixes two things at once: (1) the welcome-header H1 no longer fights
+  // a same-size stats line on narrow viewports, (2) no long dash needed
+  // as a separator. Right-aligned on sm+, left-aligned on mobile where
+  // the block stacks under the welcome copy.
+  const statsLine = [avgLine, countLine, weekLine].filter(Boolean).join(" · ");
+
   return (
     <Link
       href="/leaderboard"
       aria-label="View your rank"
       className="group sm:text-right"
     >
-      <p className="font-editorial text-2xl leading-tight text-[rgb(var(--foreground))] sm:text-3xl">
-        <span className={league.color}>{league.name}</span>
-        <span className="text-[rgb(var(--muted))]"> — </span>
-        {avgLine && (
-          <>
-            <span className="tabular-nums">{avgLine}</span>
-            <span className="text-[rgb(var(--muted))]"> · </span>
-          </>
-        )}
-        <span className="tabular-nums text-[rgb(var(--muted))]">{countLine}</span>
-        {weekLine && (
-          <>
-            <span className="text-[rgb(var(--muted))]"> · </span>
-            <span className="tabular-nums text-[rgb(var(--muted))]">
-              {weekLine}
-            </span>
-          </>
-        )}
+      <p
+        className={`font-editorial text-2xl leading-tight sm:text-3xl ${league.color}`}
+      >
+        {league.name}
+      </p>
+      <p className="mt-1 text-sm tabular-nums text-[rgb(var(--muted))]">
+        {statsLine}
       </p>
       <p className="mt-1 text-xs text-[rgb(var(--muted))] underline decoration-[rgb(26_26_32_/_0.15)] underline-offset-4 transition-colors duration-150 ease-[var(--ease-out)] group-hover:text-[rgb(var(--accent))] group-hover:decoration-[rgb(var(--accent))]">
         View leaderboard
@@ -152,7 +150,7 @@ function MiniLeaderboard({ leaderboard }: {
               ? leaderboard.userRank > 0
                 ? `You're ranked ${medalEmoji(leaderboard.userRank)} out of ${leaderboard.totalPlayers} player${leaderboard.totalPlayers !== 1 ? "s" : ""}.`
                 : "Complete a quiz to appear on the board."
-              : "Compete in your league — coming soon!"}
+              : "Compete in your league, coming soon!"}
           </p>
         </div>
         <Link
@@ -806,7 +804,7 @@ export function DashboardView({
                   Generate a quiz
                 </p>
                 <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
-                  Paste your notes or a summary — we&apos;ll turn them into questions.
+                  Paste your notes or a summary, we&apos;ll turn them into questions.
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -848,7 +846,7 @@ export function DashboardView({
                 name="title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder='e.g. "Thinking, Fast and Slow" — chapters 1–3'
+                placeholder='e.g. "Thinking, Fast and Slow", chapters 1–3'
                 className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-base outline-none ring-accent/30 transition-[border-color,box-shadow] duration-150 ease-out focus:ring-2 dark:border-slate-700 dark:bg-slate-900 sm:text-sm"
               />
             </div>

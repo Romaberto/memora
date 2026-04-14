@@ -35,7 +35,7 @@ type Props = { user: ProfileUser; stats: ProfileStats };
 // ─── small helpers ────────────────────────────────────────────────────────────
 
 function pct(n: number | null) {
-  return n != null ? `${Math.round(n)}%` : "—";
+  return n != null ? `${Math.round(n)}%` : "–";
 }
 
 function StatCard({
@@ -483,7 +483,7 @@ export function ProfileView({ user, stats }: Props) {
               <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 <StatCard
                   label="Current rank"
-                  value={stats.overallRank ?? "—"}
+                  value={stats.overallRank ?? "–"}
                   accent={!!stats.overallRank}
                 />
                 <StatCard
@@ -513,12 +513,12 @@ export function ProfileView({ user, stats }: Props) {
                 />
                 <StatCard
                   label="Longest streak"
-                  value={stats.maxStreak > 0 ? `${stats.maxStreak} ✓` : "—"}
+                  value={stats.maxStreak > 0 ? `${stats.maxStreak} ✓` : "–"}
                   sub="correct in a row"
                 />
                 <StatCard
                   label="Avg pace"
-                  value={pace ? `~${pace}` : "—"}
+                  value={pace ? `~${pace}` : "–"}
                   sub="per question"
                 />
               </div>
@@ -568,7 +568,7 @@ export function ProfileView({ user, stats }: Props) {
                 disabled
                 className="mt-4 w-full cursor-not-allowed opacity-60"
               >
-                Upgrade to Pro — coming soon
+                Upgrade: coming soon
               </Button>
             </div>
           </Card>

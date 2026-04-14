@@ -26,8 +26,8 @@ const EASE_OUT = [0.23, 1, 0.32, 1] as const;
 
 function streakMilestoneToast(nextStreak: number): string | null {
   if (nextStreak === 3) return "🔥 3 in a row!";
-  if (nextStreak === 5) return "⚡ 5 streak — 2× points!";
-  if (nextStreak === 10) return "🏆 10 streak — on fire!";
+  if (nextStreak === 5) return "⚡ 5 streak · 2× points!";
+  if (nextStreak === 10) return "🏆 10 streak · on fire!";
   return null;
 }
 
@@ -418,7 +418,7 @@ export function QuizExperience({
               disabled={regenLoading}
               onClick={() => {
                 const missed = canonicalQuestionsRef.current.filter((qq) => wrongIds.includes(qq.id));
-                resetRun(missed, quizRequestId, `${topicState} — missed only`);
+                resetRun(missed, quizRequestId, `${topicState} · missed only`);
               }}
             >
               Review missed ({wrongIds.length})
@@ -652,7 +652,7 @@ export function QuizExperience({
                     {picked === q.correctIndex ? (
                       streak >= 5 ? (
                         <p className="mt-1.5 text-[11px] font-semibold text-orange-600">
-                          🔥 2× multiplier active — don&apos;t break the chain!
+                          🔥 2× multiplier active. Don&apos;t break the chain!
                         </p>
                       ) : streak >= 3 ? (
                         <p className="mt-1.5 text-[11px] font-medium text-orange-600">

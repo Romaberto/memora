@@ -84,7 +84,7 @@ export function AdminHealthView() {
           </h1>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             {paused
-              ? "Paused — switch back to this tab to resume polling."
+              ? "Paused. Switch back to this tab to resume polling."
               : `Polling every ${POLL_MS / 1000}s · ${
                   lastUpdate
                     ? `updated ${Math.max(0, Math.round((Date.now() - lastUpdate) / 1000))}s ago`
@@ -214,7 +214,7 @@ function StatusCard({
         </div>
       </div>
       <div className="mt-3 text-2xl font-bold tabular-nums text-slate-900 dark:text-white">
-        {latencyMs != null ? `${latencyMs} ms` : "—"}
+        {latencyMs != null ? `${latencyMs} ms` : "–"}
       </div>
       <div className="mt-1 text-xs text-slate-500">round-trip latency</div>
       {errorMsg ? (
@@ -235,7 +235,7 @@ function Metric({
   value: number | string | null | undefined;
   accent?: boolean;
 }) {
-  const display = value == null ? "—" : typeof value === "number" ? value.toLocaleString() : value;
+  const display = value == null ? "–" : typeof value === "number" ? value.toLocaleString() : value;
   return (
     <Card>
       <div className="text-xs font-medium uppercase tracking-wider text-slate-500">

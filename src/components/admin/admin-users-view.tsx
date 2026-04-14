@@ -171,7 +171,7 @@ function EditUserModal({
           </div>
           <div className="rounded-xl bg-slate-50 px-3 py-2 text-center dark:bg-slate-800">
             <p className="text-lg font-bold tabular-nums text-slate-900 dark:text-white">
-              {user.avgAccuracy != null ? `${user.avgAccuracy}%` : "—"}
+              {user.avgAccuracy != null ? `${user.avgAccuracy}%` : "–"}
             </p>
             <p className="text-[10px] uppercase tracking-wider text-slate-400">Accuracy</p>
           </div>
@@ -533,7 +533,7 @@ export function AdminUsersView() {
                         )}
                         <div className="min-w-0">
                           <p className="truncate font-medium text-slate-900 dark:text-white">
-                            {u.name || u.nickname || "—"}
+                            {u.name || u.nickname || "–"}
                           </p>
                           {u.nickname && u.name && (
                             <p className="truncate text-xs text-slate-400">@{u.nickname}</p>
@@ -543,7 +543,7 @@ export function AdminUsersView() {
                     </td>
                     {/* Email */}
                     <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
-                      <span className="truncate block max-w-[200px]">{u.email || "—"}</span>
+                      <span className="truncate block max-w-[200px]">{u.email || "–"}</span>
                     </td>
                     {/* Role */}
                     <td className="px-4 py-3">
@@ -575,7 +575,7 @@ export function AdminUsersView() {
                           <span>{u.country}</span>
                         </span>
                       ) : (
-                        <span className="text-slate-300">—</span>
+                        <span className="text-slate-300">–</span>
                       )}
                     </td>
                     {/* Points */}
@@ -588,7 +588,7 @@ export function AdminUsersView() {
                     </td>
                     {/* Avg accuracy */}
                     <td className="px-4 py-3 text-right tabular-nums text-slate-600 dark:text-slate-300">
-                      {u.avgAccuracy != null ? `${u.avgAccuracy}%` : "—"}
+                      {u.avgAccuracy != null ? `${u.avgAccuracy}%` : "–"}
                     </td>
                     {/* League */}
                     <td className="px-4 py-3">

@@ -28,7 +28,7 @@ const steps = [
   {
     n: "1",
     title: "Paste anything",
-    body: "Drop in lecture notes, a podcast transcript, a book summary, or just a topic name. AI builds focused questions tailored to your material — not generic trivia.",
+    body: "Drop in lecture notes, a podcast transcript, a book summary, or just a topic name. AI builds focused questions tailored to your material, not generic trivia.",
     color: "bg-emerald-100 text-emerald-700",
   },
   {
@@ -40,7 +40,7 @@ const steps = [
   {
     n: "3",
     title: "Watch yourself improve",
-    body: "Earn points, track streaks and accuracy trends on your dashboard. See exactly where you\u2019re growing — and where to focus next.",
+    body: "Earn points, track streaks and accuracy trends on your dashboard. See exactly where you\u2019re growing, and where to focus next.",
     color: "bg-blue-100 text-blue-700",
   },
 ];
@@ -56,7 +56,7 @@ const faqs = [
   },
   {
     q: "Does it work on my phone?",
-    a: "Yes. Memora is fully responsive \u2014 just open it in your mobile browser. No app install required.",
+    a: "Yes. Memora is fully responsive. Just open it in your mobile browser, no app install required.",
   },
   {
     q: "What happens to my notes after I paste them?",
@@ -64,7 +64,7 @@ const faqs = [
   },
   {
     q: "How is this different from flashcards?",
-    a: "Flashcards test recall of isolated facts. Memora generates contextual multiple-choice questions with explanations \u2014 closer to how exams and real understanding work. Plus you earn points, compete on the leaderboard, and get a progress dashboard.",
+    a: "Flashcards test recall of isolated facts. Memora generates contextual multiple-choice questions with explanations, closer to how exams and real understanding work. Plus you earn points, compete on the leaderboard, and get a progress dashboard.",
   },
 ];
 
@@ -111,8 +111,8 @@ export function LandingPage({
               </h1>
 
               <p className="mt-4 max-w-lg text-base leading-relaxed text-[rgb(var(--muted))] sm:mt-5 sm:text-lg">
-                Turn anything you read, watch, or listen to into a quiz —
-                books, podcasts, lectures, even a great film. Earn points,
+                Turn anything you read, watch, or listen to into a quiz.
+                Books, podcasts, lectures, even a great film. Earn points,
                 beat your scores, and build real long-term memory.
               </p>
 
@@ -161,7 +161,7 @@ export function LandingPage({
             </h2>
             <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-[rgb(var(--muted))] sm:text-base">
               Flashcards test isolated facts. Memora generates contextual
-              questions from <em>your</em> material — with explanations,
+              questions from <em>your</em> material, with explanations,
               gamification, and a dashboard that shows you growing.
             </p>
           </motion.div>

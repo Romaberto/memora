@@ -70,7 +70,7 @@ export default async function SessionReviewPage({ params }: PageProps) {
             <p className="text-xl font-bold">
               {row.durationSeconds != null && row.durationSeconds > 0
                 ? formatDurationHuman(row.durationSeconds)
-                : "—"}
+                : "–"}
             </p>
           </div>
         </div>

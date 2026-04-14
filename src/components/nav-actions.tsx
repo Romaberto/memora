@@ -99,7 +99,7 @@ export async function NavActions() {
       <div className="flex items-center gap-1 md:hidden">
         <Link
           href="/profile"
-          aria-label={`${displayName} — your profile`}
+          aria-label={`${displayName} · your profile`}
           title="Your profile"
           className="inline-flex h-10 w-10 items-center justify-center rounded-xl transition-[background-color,transform] duration-150 ease-out hover:bg-black/5 active:scale-[0.94]"
         >

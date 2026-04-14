@@ -156,7 +156,7 @@ export function DailyProgressDashboard({ sessions, subscriptionTier }: Props) {
           <p className="mt-1 text-2xl font-extrabold tabular-nums leading-none">
             {totals.avgPercentage != null
               ? `${Math.round(totals.avgPercentage)}%`
-              : "—"}
+              : "–"}
           </p>
         </div>
       </div>
@@ -294,7 +294,7 @@ export function DailyProgressDashboard({ sessions, subscriptionTier }: Props) {
                     />
                   </div>
                   <span className="text-[10px] font-semibold tabular-nums text-slate-700 dark:text-slate-200">
-                    {b.totalScore || "—"}
+                    {b.totalScore || "–"}
                   </span>
                 </button>
               );

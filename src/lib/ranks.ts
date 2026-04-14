@@ -16,12 +16,12 @@ export function rankFromPercentage(percentage: number): string {
 
 export function encouragingMessage(percentage: number): string {
   if (percentage >= 90)
-    return "Outstanding work—your recall is sharp. Keep building on it.";
+    return "Outstanding work. Your recall is sharp, keep building on it.";
   if (percentage >= 70)
     return "Strong session. A little more practice will make this stick even longer.";
   if (percentage >= 50)
     return "You’re on the right track. Retrieval practice rewards consistency.";
   if (percentage >= 30)
     return "Every attempt counts. Review the explanations and try again soon.";
-  return "Tough set—use this as a map of what to revisit. You’ll improve quickly.";
+  return "Tough set. Use this as a map of what to revisit. You’ll improve quickly.";
 }
