@@ -2,36 +2,54 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Warm, friendly, single light theme ── */
+/* ── Editorial / reading-room theme ──
+   Warm paper background, ink foreground, single ink-red accent.
+   No gradients, no rainbow. The visual hierarchy is carried by
+   typography (serif display + sans body) and whitespace, not color.
+*/
 :root {
-  --background: 251 247 240;   /* #FBF7F0 — warm cream */
-  --foreground: 26 26 46;      /* #1A1A2E — dark navy */
-  --muted:      139 134 150;   /* #8B8696 — warm grey */
-  --card:       255 255 255;   /* #FFFFFF — clean white */
-  --border:     232 224 212;   /* #E8E0D4 — warm border */
+  --background: 251 247 240;   /* #FBF7F0 — warm paper cream */
+  --foreground: 26 26 32;      /* #1A1A20 — near-black ink */
+  --muted:      120 114 108;   /* #787266 — warm ink-grey */
+  --card:       255 255 255;   /* #FFFFFF */
+  --border:     232 224 212;   /* #E8E0D4 — warm hairline */
+  --border-faint: 26 26 32;    /* rgb for 6% opacity hairlines */
+  /* Accent = emerald, matching the landing page's eyebrow pills, CTAs,
+     and "How it works" accents. One accent across the whole product.
+     The ink-red experiment lives on only as the `gradient-text` word
+     ("stick.") in the landing hero, which is its legitimate one-off. */
+  --accent:      16 185 129;   /* #10B981 — emerald-500 */
+  --accent-ink:   5 150 105;   /* #059669 — emerald-600 (hover) */
+  --surface-2:  247 241 231;   /* #F7F1E7 — one step down from paper */
+
+  /* Animation tokens — custom curves beat the built-in CSS easings. */
+  --ease-out:    cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
 }
 
-/* Override dark — force the same warm palette everywhere */
+/* No real dark mode — enforce the single warm palette. */
 .dark {
   --background: 251 247 240;
-  --foreground: 26 26 46;
-  --muted:      139 134 150;
+  --foreground: 26 26 32;
+  --muted:      120 114 108;
   --card:       255 255 255;
   --border:     232 224 212;
+  --border-faint: 26 26 32;
+  --accent:      16 185 129;
+  --accent-ink:   5 150 105;
+  --surface-2:  247 241 231;
 }
 
 html {
   scroll-behavior: smooth;
 }
 
-/* Reduced motion: keep opacity/color, kill decorative loops + transforms.
-   Per the skill: "fewer and gentler, not zero". */
+/* Reduced motion: kill transforms + loops, keep state changes visible. */
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
   }
 
-  /* Stop infinite decorative loops */
   .animate-float,
   .animate-bounce-soft,
   .animate-pulse,
@@ -40,8 +58,6 @@ html {
     animation: none !important;
   }
 
-  /* Cap any remaining animation/transition durations to a near-zero blink
-     so motion-sensitive users still see state changes, just not movement. */
   *,
   *::before,
   *::after {
@@ -51,7 +67,8 @@ html {
 }
 
 body {
-  @apply bg-[rgb(var(--background))] text-[rgb(var(--foreground))] transition-colors duration-200;
+  @apply bg-[rgb(var(--background))] text-[rgb(var(--foreground))] antialiased;
+  font-feature-settings: "ss01", "cv11";
 }
 
 @layer utilities {
@@ -59,34 +76,70 @@ body {
     text-wrap: balance;
   }
 
+  /* Display type — matches landing page conventions.
+     Same Inter stack as body copy; hierarchy comes from weight + tracking.
+     Bold (700) is the landing-page h2/h3 weight, tracking-tight (-0.025em)
+     is its companion setting. Keeping these identical means dashboard and
+     landing feel like one product, not two. */
+  .font-editorial {
+    font-family: var(--font-geist-sans), system-ui, sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+  }
+  /* Display-hero variant — for the biggest on-page title only (dashboard
+     greeting, landing hero). Mirrors `font-extrabold tracking-tight` on
+     the landing hero so both pages hit the same visual register. */
+  .font-editorial-hero {
+    font-family: var(--font-geist-sans), system-ui, sans-serif;
+    font-weight: 800;
+    letter-spacing: -0.025em;
+  }
+
+  /* Hairline divider — replaces most card borders. 6% ink-on-paper. */
+  .hairline {
+    border-color: rgb(26 26 32 / 0.08);
+  }
+  .hairline-b {
+    border-bottom: 1px solid rgb(26 26 32 / 0.08);
+  }
+
+  /* Landing's "stick." hero accent — emerald-to-teal gradient. */
   .gradient-text {
     @apply bg-gradient-to-r from-emerald-500 to-teal-500 bg-clip-text text-transparent;
   }
-
   .gradient-text-r {
     @apply bg-gradient-to-r from-teal-500 to-emerald-500 bg-clip-text text-transparent;
   }
 
-  /* Soft pastel card styles */
+  /* Card surface — restrained, no borders by default. Shadow does the
+     figure-ground separation, not an emerald ring on hover. */
   .card-soft {
-    @apply rounded-2xl border border-[rgb(var(--border))] bg-white shadow-sm;
-    transition: box-shadow 0.2s, border-color 0.2s;
+    @apply rounded-lg bg-white;
+    box-shadow: 0 1px 2px rgba(26, 26, 32, 0.04);
+    transition: box-shadow 200ms var(--ease-out);
   }
 
-  .card-soft:hover {
-    @apply shadow-md border-emerald-200;
+  @media (hover: hover) and (pointer: fine) {
+    .card-soft:hover {
+      box-shadow: 0 2px 6px rgba(26, 26, 32, 0.08);
+    }
   }
 
-  /* Pastel accent backgrounds */
-  .bg-pastel-green  { background: #ECFDF5; }
-  .bg-pastel-blue   { background: #EFF6FF; }
-  .bg-pastel-yellow { background: #FFFBEB; }
-  .bg-pastel-pink   { background: #FFF1F2; }
-  .bg-pastel-purple { background: #FAF5FF; }
-  .bg-pastel-orange { background: #FFF7ED; }
+  /* Pastel backgrounds retired. Keep the class names as aliases on the
+     two neutral surfaces so we don't break any stray landing-page usage. */
+  .bg-pastel-green,
+  .bg-pastel-blue,
+  .bg-pastel-yellow,
+  .bg-pastel-pink,
+  .bg-pastel-purple,
+  .bg-pastel-orange {
+    background: rgb(var(--surface-2));
+  }
 
-  /* Friendly badge */
   .xp-badge {
-    @apply inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-600;
+    @apply inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold;
+    background: rgb(var(--surface-2));
+    color: rgb(var(--accent));
+    border: 1px solid rgb(26 26 32 / 0.08);
   }
 }

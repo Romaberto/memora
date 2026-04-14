@@ -126,6 +126,13 @@ export function MobileMenu({ user }: { user: MobileUser }) {
               >
                 Leaderboard
               </Link>
+              <Link
+                href="/pricing"
+                onClick={close}
+                className="rounded-xl px-3 py-3 text-base font-medium text-[rgb(var(--foreground))] transition-colors duration-150 ease-out hover:bg-black/5"
+              >
+                Pricing
+              </Link>
 
               <button
                 type="button"
@@ -138,6 +145,27 @@ export function MobileMenu({ user }: { user: MobileUser }) {
             </>
           ) : (
             <>
+              <Link
+                href="/topics"
+                onClick={close}
+                className="rounded-xl px-3 py-3 text-base font-medium text-[rgb(var(--foreground))] transition-colors duration-150 ease-out hover:bg-black/5"
+              >
+                Topics
+              </Link>
+              <Link
+                href="/leaderboard"
+                onClick={close}
+                className="rounded-xl px-3 py-3 text-base font-medium text-[rgb(var(--foreground))] transition-colors duration-150 ease-out hover:bg-black/5"
+              >
+                Leaderboard
+              </Link>
+              <Link
+                href="/pricing"
+                onClick={close}
+                className="rounded-xl px-3 py-3 text-base font-medium text-[rgb(var(--foreground))] transition-colors duration-150 ease-out hover:bg-black/5"
+              >
+                Pricing
+              </Link>
               <Link
                 href="/login"
                 onClick={close}

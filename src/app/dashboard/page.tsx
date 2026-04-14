@@ -2,7 +2,7 @@ import prisma from "@/lib/db";
 import { requireUserId } from "@/lib/auth";
 import { rankFromPercentage } from "@/lib/ranks";
 import { getLeaderboard, findUserRank } from "@/lib/leaderboard";
-import { getUserSubscription, getDailyQuizCount, FREE_DAILY_QUIZ_LIMIT } from "@/lib/subscription";
+import { getUserSubscription, getDailyQuizCount, getDailyLimit } from "@/lib/subscription";
 import { getRecommendedQuizzes } from "@/lib/topics";
 import {
   DashboardView,
@@ -122,7 +122,7 @@ export default async function DashboardPage() {
       dailyProgressSessions={dailyProgressSessions}
       subscriptionTier={subscriptionTier}
       dailyQuizCount={dailyQuizCount}
-      dailyQuizLimit={subscriptionTier === "free" ? FREE_DAILY_QUIZ_LIMIT : Infinity}
+      dailyQuizLimit={getDailyLimit(subscriptionTier)}
       recommendedQuizzes={recommendedQuizzes}
       userEmail={guest?.email ?? null}
       alreadyOnWaitlist={Boolean(waitlistRow)}

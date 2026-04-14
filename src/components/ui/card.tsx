@@ -1,3 +1,9 @@
+/**
+ * Editorial card surface — no border by default, subtle ink-shadow for
+ * figure/ground separation. Tighter radius (lg / 8px) to match the
+ * rest of the editorial system. Hover is gated by the global
+ * `hoverOnlyWhenSupported` Tailwind flag so it doesn't stick on mobile.
+ */
 export function Card({
   className = "",
   children,
@@ -7,7 +13,7 @@ export function Card({
 }) {
   return (
     <div
-      className={`rounded-2xl border border-[rgb(var(--border))] bg-white p-5 shadow-soft transition-shadow duration-200 ease-out hover:shadow-soft-md ${className}`}
+      className={`rounded-lg bg-white p-5 shadow-[0_1px_2px_rgba(26,26,32,0.04)] transition-shadow duration-200 ease-[var(--ease-out)] hover:shadow-[0_2px_6px_rgba(26,26,32,0.08)] ${className}`}
     >
       {children}
     </div>
@@ -22,7 +28,9 @@ export function CardTitle({
   className?: string;
 }) {
   return (
-    <h3 className={`text-base font-semibold tracking-tight ${className}`}>
+    <h3
+      className={`font-editorial text-xl leading-none tracking-tight text-[rgb(var(--foreground))] ${className}`}
+    >
       {children}
     </h3>
   );

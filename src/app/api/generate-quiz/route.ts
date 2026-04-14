@@ -43,28 +43,23 @@ export async function POST(req: Request) {
     );
   }
 
-  // F2P restructure: free tier cannot generate custom quizzes. The dashboard
-  // UI hides the form for free users, but we still gate server-side so
-  // curl/bypass attempts fail cleanly with an upgrade hint.
+  // Tier gate — free tier has no custom generation at all (returns 403 with
+  // `upgradeReason: "custom_quiz"`). Paid tiers over their daily cap return
+  // 429 with `upgradeReason: "daily_limit"`. The client uses these to choose
+  // between the pricing modal and a "try again tomorrow" message.
   const tier = await getUserSubscription(userId);
-  if (tier === "free") {
-    return NextResponse.json(
-      {
-        error:
-          "Custom quizzes are part of our paid plans. Join the waitlist to be notified when they launch.",
-        upgradeRequired: true,
-      },
-      { status: 403 },
-    );
-  }
-
-  // Soft daily-quota check — fast, no lock. Avoids burning an OpenAI call
-  // for users who are already over their limit (the UI normally disables
-  // the button, but a curl request would skip that). The strict version
-  // runs as part of the create transaction below.
   const quota = await canGenerateQuiz(userId);
   if (!quota.allowed) {
-    return NextResponse.json({ error: quota.reason, dailyLimitReached: true }, { status: 429 });
+    const status = quota.upgradeReason === "custom_quiz" ? 403 : 429;
+    return NextResponse.json(
+      {
+        error: quota.reason,
+        upgradeRequired: quota.upgradeReason === "custom_quiz",
+        dailyLimitReached: quota.upgradeReason === "daily_limit",
+        upgradeReason: quota.upgradeReason,
+      },
+      { status },
+    );
   }
 
   let body: unknown;
@@ -85,11 +80,17 @@ export async function POST(req: Request) {
   const { title, summaryText, notes, questionCount, debugIncludePrompt } =
     parsed.data;
 
-  // Enforce question count limits based on subscription. `tier` is already
-  // fetched above for the free-tier gate.
+  // Enforce tier-specific question count ceilings. Builder caps at 20,
+  // Scholar at 30, Master at 50. The client dropdown filters to the same
+  // set, so hitting this error implies a tampered payload.
   if (!isQuestionCountAllowed(tier, questionCount)) {
     return NextResponse.json(
-      { error: "Upgrade to Pro to unlock more than 10 questions per quiz.", upgradeRequired: true },
+      {
+        error:
+          "Your plan doesn't allow quizzes this long. Upgrade for more questions per quiz.",
+        upgradeRequired: true,
+        upgradeReason: "question_count",
+      },
       { status: 403 },
     );
   }

@@ -7,6 +7,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { LEAGUES } from "@/lib/leagues";
+import { TIERS_IN_ORDER, TIER_IDS, type TierId } from "@/lib/tiers";
+
+type TierFilter = "" | TierId;
 
 type AdminUser = {
   id: string;
@@ -201,26 +204,30 @@ function EditUserModal({
             </div>
           </div>
 
-          {/* Subscription Tier */}
+          {/* Subscription Tier — 4 options sourced from lib/tiers.ts */}
           <div>
             <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
               Subscription Tier
             </label>
-            <div className="flex gap-2">
-              {["free", "pro"].map((t) => (
+            <div className="grid grid-cols-2 gap-2">
+              {TIERS_IN_ORDER.map((t) => (
                 <button
-                  key={t}
+                  key={t.id}
                   type="button"
-                  onClick={() => setTier(t)}
-                  className={`flex-1 rounded-xl border px-3 py-2 text-sm font-semibold transition-colors ${
-                    tier === t
-                      ? t === "pro"
-                        ? "border-accent bg-accent/10 text-accent"
-                        : "border-slate-300 bg-slate-50 text-slate-700"
+                  onClick={() => setTier(t.id)}
+                  className={`rounded-xl border px-3 py-2 text-left text-sm font-semibold transition-colors ${
+                    tier === t.id
+                      ? t.id === "free"
+                        ? "border-slate-300 bg-slate-50 text-slate-700"
+                        : "border-accent bg-accent/10 text-accent"
                       : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50 dark:border-slate-700"
                   }`}
                 >
-                  {t.charAt(0).toUpperCase() + t.slice(1)}
+                  <span className="block">{t.name}</span>
+                  <span className="mt-0.5 block text-[10px] font-normal uppercase tracking-wider text-slate-400">
+                    {t.id}
+                    {t.priceMonthly > 0 ? ` · $${t.priceMonthly}/mo` : " · free"}
+                  </span>
                 </button>
               ))}
             </div>
@@ -316,7 +323,7 @@ export function AdminUsersView() {
   });
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [tierFilter, setTierFilter] = useState<"" | "free" | "pro">("");
+  const [tierFilter, setTierFilter] = useState<TierFilter>("");
   const [sort, setSort] = useState<SortField>("createdAt");
   const [order, setOrder] = useState<SortOrder>("desc");
   const [loading, setLoading] = useState(true);
@@ -415,12 +422,20 @@ export function AdminUsersView() {
         </div>
         <select
           value={tierFilter}
-          onChange={(e) => setTierFilter(e.target.value as "" | "free" | "pro")}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v === "" || (TIER_IDS as readonly string[]).includes(v)) {
+              setTierFilter(v as TierFilter);
+            }
+          }}
           className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
         >
           <option value="">All tiers</option>
-          <option value="free">Free</option>
-          <option value="pro">Pro</option>
+          {TIERS_IN_ORDER.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+            </option>
+          ))}
         </select>
         <span className="text-xs text-slate-500">
           {pagination.totalCount.toLocaleString()} user{pagination.totalCount !== 1 ? "s" : ""}
@@ -540,13 +555,13 @@ export function AdminUsersView() {
                         {u.role}
                       </span>
                     </td>
-                    {/* Tier badge */}
+                    {/* Tier badge — accent for any paid tier, neutral for free */}
                     <td className="px-4 py-3">
                       <span
                         className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
-                          u.subscriptionTier === "pro"
-                            ? "bg-accent/10 text-accent"
-                            : "bg-slate-100 text-slate-500"
+                          u.subscriptionTier === "free"
+                            ? "bg-slate-100 text-slate-500"
+                            : "bg-accent/10 text-accent"
                         }`}
                       >
                         {u.subscriptionTier}

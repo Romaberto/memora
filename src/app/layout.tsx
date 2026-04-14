@@ -17,6 +17,7 @@ const mono = JetBrains_Mono({
   display: "swap",
 });
 
+
 export const metadata: Metadata = {
   title: "Memora — Make Knowledge Stick",
   description:

@@ -1,18 +1,16 @@
-"use client";
-
 import Link from "next/link";
-import { motion } from "framer-motion";
 import { getTopicColors } from "@/lib/topic-colors";
 import type { RecommendedQuiz } from "@/lib/topics";
-
-const EASE_OUT = [0.23, 1, 0.32, 1] as const;
 
 /**
  * Dashboard recommendations block.
  *
- * Layout: hero on top (full width, compact natural height), three alternates
- * in a 3-column row below. Hero is NOT stretched to match a tall right column
- * — that was the empty-space problem in the previous revision.
+ * Hero on top (full-width, compact natural height), three alternates in
+ * a 3-col row below. Emoji icons on colored pastel tiles — the same
+ * visual language the landing page uses for its step circles and the
+ * "How it works" numbered badges. No framer-motion stagger on this
+ * dashboard surface (high-frequency → the animation was latency, not
+ * delight).
  */
 export function RecommendedQuizzes({ quizzes }: { quizzes: RecommendedQuiz[] }) {
   if (quizzes.length === 0) return null;
@@ -24,27 +22,27 @@ export function RecommendedQuizzes({ quizzes }: { quizzes: RecommendedQuiz[] }) 
     <section aria-label="Recommended quizzes">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h2 className="text-base font-semibold text-slate-900 dark:text-white">
+          <h2 className="text-lg font-bold tracking-tight text-[rgb(var(--foreground))] sm:text-xl">
             Picked for you
           </h2>
-          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-            Based on the topics you chose during sign-up.
+          <p className="mt-1 text-sm text-[rgb(var(--muted))]">
+            Based on the topics you chose.
           </p>
         </div>
         <Link
           href="/topics"
-          className="shrink-0 text-xs font-medium text-accent transition-colors duration-150 ease-out hover:text-emerald-700 dark:hover:text-emerald-300"
+          className="shrink-0 text-sm font-medium text-accent transition-colors duration-150 ease-[var(--ease-out)] hover:text-[rgb(var(--accent-ink))]"
         >
           Browse all →
         </Link>
       </div>
 
-      <div className="mt-3 space-y-3">
+      <div className="mt-4 space-y-3">
         {hero && <HeroCard quiz={hero} />}
         {alts.length > 0 && (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {alts.map((q, i) => (
-              <AltCard key={q.id} quiz={q} index={i} />
+            {alts.map((q) => (
+              <AltCard key={q.id} quiz={q} />
             ))}
           </div>
         )}
@@ -56,89 +54,78 @@ export function RecommendedQuizzes({ quizzes }: { quizzes: RecommendedQuiz[] }) 
 // ── Hero card ──────────────────────────────────────────────────────────────
 
 function HeroCard({ quiz }: { quiz: RecommendedQuiz }) {
-  const colors = getTopicColors(quiz.topic.color);
+  const tile = getTopicColors(quiz.topic.color);
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, ease: EASE_OUT }}
+    <Link
+      href={`/topics/${quiz.topic.slug}/quiz/${quiz.id}`}
+      className="group relative flex items-center gap-4 overflow-hidden rounded-xl border border-[rgb(var(--border))] bg-white p-5 shadow-[0_1px_2px_rgba(26,26,32,0.04)] transition-[box-shadow,transform] duration-200 ease-[var(--ease-out)] hover:shadow-[0_2px_8px_rgba(26,26,32,0.08)] active:scale-[0.995]"
     >
-      <Link
-        href={`/topics/${quiz.topic.slug}/quiz/${quiz.id}`}
-        className="group relative flex items-center gap-4 overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-[box-shadow,transform] duration-200 ease-out hover:shadow-md active:scale-[0.99] dark:border-slate-700 dark:bg-slate-900/60"
+      {/* Accent stripe — the only place the topic color lives at card level */}
+      <span
+        aria-hidden
+        className={`pointer-events-none absolute inset-y-0 left-0 w-1 ${tile.bg}`}
+      />
+
+      <div
+        aria-hidden
+        className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl text-2xl ${tile.bg}`}
       >
-        {/* accent stripe — the only place topic color lives at card level */}
-        <span
-          aria-hidden
-          className={`pointer-events-none absolute inset-y-0 left-0 w-1 ${colors.bg.split(" ")[0]}`}
-        />
+        {quiz.topic.icon ?? "✨"}
+      </div>
 
-        <div
-          className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl text-2xl ${colors.bg}`}
-        >
-          {quiz.topic.icon ?? "✨"}
-        </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-accent">
+          Next up · {quiz.topic.name}
+        </p>
+        <h3 className="mt-0.5 text-lg font-bold leading-snug tracking-tight text-[rgb(var(--foreground))] sm:text-xl">
+          {quiz.title}
+        </h3>
+        <p className="mt-1 text-xs text-[rgb(var(--muted))]">
+          {quiz.questionCount} questions · Quiz #{quiz.quizNumber}
+        </p>
+      </div>
 
-        <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-accent">
-            Next up · {quiz.topic.name}
-          </p>
-          <p className="mt-0.5 text-lg font-bold leading-snug text-slate-900 dark:text-white">
-            {quiz.title}
-          </p>
-          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-            {quiz.questionCount} questions · Quiz #{quiz.quizNumber}
-          </p>
-        </div>
-
-        <span className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-[transform,background-color] duration-150 ease-out group-hover:bg-emerald-600 group-hover:translate-x-0.5">
-          Play →
-        </span>
-      </Link>
-    </motion.div>
+      <span className="ml-auto hidden shrink-0 items-center gap-1.5 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-[background-color] duration-150 ease-[var(--ease-out)] group-hover:bg-[rgb(var(--accent-ink))] sm:inline-flex">
+        Play →
+      </span>
+    </Link>
   );
 }
 
 // ── Alternate card (compact) ───────────────────────────────────────────────
 
-function AltCard({ quiz, index }: { quiz: RecommendedQuiz; index: number }) {
-  const colors = getTopicColors(quiz.topic.color);
+function AltCard({ quiz }: { quiz: RecommendedQuiz }) {
+  const tile = getTopicColors(quiz.topic.color);
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, ease: EASE_OUT, delay: 0.05 + index * 0.04 }}
-      className="h-full"
+    <Link
+      href={`/topics/${quiz.topic.slug}/quiz/${quiz.id}`}
+      className="group relative flex h-full flex-col justify-between gap-3 rounded-xl border border-[rgb(var(--border))] bg-white p-4 shadow-[0_1px_2px_rgba(26,26,32,0.04)] transition-[box-shadow,transform] duration-200 ease-[var(--ease-out)] hover:shadow-[0_2px_8px_rgba(26,26,32,0.08)] active:scale-[0.98]"
     >
-      <Link
-        href={`/topics/${quiz.topic.slug}/quiz/${quiz.id}`}
-        className="group relative flex h-full flex-col justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 transition-[box-shadow,transform] duration-200 ease-out hover:shadow-md active:scale-[0.98] dark:border-slate-700 dark:bg-slate-900/60"
-      >
-        <div className="flex items-start gap-3">
-          <div
-            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-lg ${colors.bg}`}
-          >
-            {quiz.topic.icon ?? "✨"}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className={`text-[10px] font-semibold uppercase tracking-wide ${colors.text}`}>
-              {quiz.topic.name}
-            </p>
-            <p className="mt-0.5 text-sm font-semibold leading-snug text-slate-900 dark:text-white">
-              {quiz.title}
-            </p>
-          </div>
+      <div className="flex items-start gap-3">
+        <div
+          aria-hidden
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-lg ${tile.bg}`}
+        >
+          {quiz.topic.icon ?? "✨"}
         </div>
-
-        <div className="flex items-center justify-between">
-          <p className="text-[11px] text-slate-500 dark:text-slate-400">
-            {quiz.questionCount} questions
+        <div className="min-w-0 flex-1">
+          <p className={`text-[10px] font-semibold uppercase tracking-wide ${tile.text}`}>
+            {quiz.topic.name}
           </p>
-          <span className="inline-flex items-center rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 transition-[transform,background-color] duration-150 ease-out group-hover:bg-accent group-hover:text-white group-hover:translate-x-0.5 dark:bg-slate-800 dark:text-slate-200">
-            Play →
-          </span>
+          <h3 className="mt-0.5 text-sm font-semibold leading-snug text-[rgb(var(--foreground))]">
+            {quiz.title}
+          </h3>
         </div>
-      </Link>
-    </motion.div>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <p className="text-[11px] text-[rgb(var(--muted))]">
+          {quiz.questionCount} questions
+        </p>
+        <span className="inline-flex items-center rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 transition-colors duration-150 ease-[var(--ease-out)] group-hover:bg-accent group-hover:text-white">
+          Play →
+        </span>
+      </div>
+    </Link>
   );
 }

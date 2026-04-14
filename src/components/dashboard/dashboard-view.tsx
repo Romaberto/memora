@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { GenerationProgress } from "@/components/ui/generation-progress";
 import { QUESTION_COUNTS, type QuestionCount } from "@/lib/schemas/quiz";
+import { getAllowedQuestionCountsForTier, type TierId } from "@/lib/tiers";
 import { formatDateTimeStable } from "@/lib/format-date";
 import { formatDurationHuman } from "@/lib/format-quiz-clock";
 import { DailyProgressDashboard } from "@/components/dashboard/daily-progress-dashboard";
@@ -14,11 +15,15 @@ import type { SessionForDaily } from "@/lib/daily-progress";
 import { recordQuizGenerationSeconds } from "@/lib/quiz-generation-timing";
 import { UserAvatar } from "@/components/user-avatar";
 import type { LeaderboardEntry } from "@/lib/leaderboard";
-import { getLeague, getNextLeague, leagueProgress, LEAGUES } from "@/lib/leagues";
+import { getLeague } from "@/lib/leagues";
 import type { League } from "@/lib/leagues";
 import type { RecommendedQuiz } from "@/lib/topics";
 import { RecommendedQuizzes } from "@/components/dashboard/recommended-quizzes";
 import { CustomQuizzesCard } from "@/components/dashboard/custom-quizzes-card";
+import {
+  UpgradeModal,
+  type UpgradeReason,
+} from "@/components/pricing/upgrade-modal";
 
 // ─── icons ───────────────────────────────────────────────────────────────────
 
@@ -60,69 +65,59 @@ function PlusIcon() {
   );
 }
 
-// ─── stat pill — glanceable hero numbers ─────────────────────────────────────
+// ─── editorial stats line ───────────────────────────────────────────────────
+//
+// The editorial direction replaces the four-pill stat row with a single
+// sentence-shaped readout. Same information, zero SaaS-dashboard energy.
+// Small per-number tooltips via <Link> to /leaderboard keep it actionable.
 
-function StatPill({
-  label,
-  value,
-  accent = false,
-  size = "md",
+function EditorialStats({
+  league,
+  avgPercentage,
+  totalSessions,
+  sessionsLast7Days,
 }: {
-  label: string;
-  value: React.ReactNode;
-  accent?: boolean;
-  size?: "md" | "lg";
+  league: League;
+  avgPercentage: number | null;
+  totalSessions: number;
+  sessionsLast7Days: number;
 }) {
-  const isLarge = size === "lg";
+  const avgLine =
+    avgPercentage != null ? `${Math.round(avgPercentage)}% avg` : null;
+  const countLine = `${totalSessions} ${
+    totalSessions === 1 ? "quiz" : "quizzes"
+  }`;
+  const weekLine =
+    sessionsLast7Days > 0 ? `${sessionsLast7Days} this week` : null;
+
   return (
-    <div
-      className={`flex flex-col rounded-xl border px-3 py-2.5 ${
-        isLarge ? "min-w-[104px]" : "min-w-[84px]"
-      } ${
-        accent
-          ? "border-accent/40 bg-gradient-to-br from-accent/[0.10] to-accent/[0.02]"
-          : "border-[rgb(var(--border))] bg-[rgb(var(--background))]"
-      }`}
+    <Link
+      href="/leaderboard"
+      aria-label="View your rank"
+      className="group sm:text-right"
     >
-      <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-        {label}
-      </span>
-      <span
-        className={`mt-1 font-extrabold tabular-nums leading-none ${
-          isLarge ? "text-2xl sm:text-3xl" : "text-xl sm:text-2xl"
-        } ${accent ? "text-accent" : "text-[rgb(var(--foreground))]"}`}
-      >
-        {value}
-      </span>
-    </div>
-  );
-}
-
-// ─── league pill — shows current league with icon + progress ────────────────
-
-function LeaguePill({ totalPoints }: { totalPoints: number }) {
-  const league = getLeague(totalPoints);
-  const next = getNextLeague(totalPoints);
-  const progress = leagueProgress(totalPoints);
-  return (
-    <Link href="/leaderboard?tab=leagues" className="group">
-      <div className="flex flex-col rounded-xl border border-accent/40 bg-gradient-to-br from-accent/[0.10] to-accent/[0.02] px-3 py-2.5 min-w-[104px] transition-shadow duration-150 ease-out group-hover:shadow-sm">
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-          League
-        </span>
-        <span className={`mt-1 flex items-center gap-1.5 text-lg font-extrabold leading-none ${league.color}`}>
-          <span>{league.icon}</span>
-          <span>{league.name}</span>
-        </span>
-        {next && (
-          <div className="mt-1.5 flex items-center gap-1.5">
-            <div className="h-1 flex-1 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
-              <div className="h-full rounded-full bg-accent transition-all duration-500" style={{ width: `${progress}%` }} />
-            </div>
-            <span className="text-[9px] tabular-nums text-slate-400">{progress}%</span>
-          </div>
+      <p className="font-editorial text-2xl leading-tight text-[rgb(var(--foreground))] sm:text-3xl">
+        <span className={league.color}>{league.name}</span>
+        <span className="text-[rgb(var(--muted))]"> — </span>
+        {avgLine && (
+          <>
+            <span className="tabular-nums">{avgLine}</span>
+            <span className="text-[rgb(var(--muted))]"> · </span>
+          </>
         )}
-      </div>
+        <span className="tabular-nums text-[rgb(var(--muted))]">{countLine}</span>
+        {weekLine && (
+          <>
+            <span className="text-[rgb(var(--muted))]"> · </span>
+            <span className="tabular-nums text-[rgb(var(--muted))]">
+              {weekLine}
+            </span>
+          </>
+        )}
+      </p>
+      <p className="mt-1 text-xs text-[rgb(var(--muted))] underline decoration-[rgb(26_26_32_/_0.15)] underline-offset-4 transition-colors duration-150 ease-[var(--ease-out)] group-hover:text-[rgb(var(--accent))] group-hover:decoration-[rgb(var(--accent))]">
+        View leaderboard
+      </p>
     </Link>
   );
 }
@@ -494,7 +489,7 @@ type Props = {
   requests: DashboardRequestRow[];
   sessions: DashboardSessionRow[];
   dailyProgressSessions: SessionForDaily[];
-  subscriptionTier: "free" | "pro";
+  subscriptionTier: TierId;
   dailyQuizCount: number;
   dailyQuizLimit: number;
   recommendedQuizzes: RecommendedQuiz[];
@@ -545,7 +540,24 @@ export function DashboardView({
   const [title, setTitle] = useState("");
   const [summaryText, setSummaryText] = useState("");
   const [notes, setNotes] = useState("");
+  // Tier-gated question counts. Builder caps at 20, Scholar at 30, Master at 50.
+  // Free tier returns []; the form is hidden anyway, but we fall back to the
+  // full set so the effect hooks below don't see empty arrays on mount.
+  const tierAllowedCounts = getAllowedQuestionCountsForTier(subscriptionTier);
+  const allowedCounts =
+    tierAllowedCounts.length > 0 ? tierAllowedCounts : (QUESTION_COUNTS as readonly number[]);
   const [questionCount, setQuestionCount] = useState<QuestionCount>(10);
+
+  // If the user's saved selection is above their tier ceiling (e.g. they
+  // downgraded or a prefill carried an out-of-range value), clamp it down
+  // to the largest allowed option. Do this in an effect so prefill-driven
+  // changes are caught.
+  useEffect(() => {
+    if (!allowedCounts.includes(questionCount)) {
+      const max = Math.max(...allowedCounts);
+      setQuestionCount(max as QuestionCount);
+    }
+  }, [allowedCounts, questionCount]);
   const [showNotes, setShowNotes] = useState(false);
 
   // Collapse the full generator for returning users — we expand when the user
@@ -563,6 +575,11 @@ export function DashboardView({
   const [error, setError] = useState<string | null>(null);
   const [debugPrompt, setDebugPrompt] = useState(false);
   const [debugPayload, setDebugPayload] = useState<string | null>(null);
+
+  // Upgrade modal — opened when /api/generate-quiz returns an upgradeReason.
+  // Three trigger shapes: custom_quiz (free-tier gate), question_count
+  // (quiz too long for tier), daily_limit (paid tier over its cap).
+  const [upgradeReason, setUpgradeReason] = useState<UpgradeReason | null>(null);
 
   // history state — row-level undo (5s window before DELETE fires)
   const [pendingRemovals, setPendingRemovals] = useState<Map<string, number>>(
@@ -646,6 +663,16 @@ export function DashboardView({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        // Surface the upgrade modal for tier-gated errors so users see a
+        // clear path forward instead of a red inline-error sentence.
+        if (
+          data.upgradeReason === "custom_quiz" ||
+          data.upgradeReason === "question_count" ||
+          data.upgradeReason === "daily_limit"
+        ) {
+          setUpgradeReason(data.upgradeReason);
+          return;
+        }
         setError(
           typeof data.error === "string"
             ? data.error
@@ -684,39 +711,57 @@ export function DashboardView({
 
   return (
     <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6">
+      {/* Tier-gate modal. Mounted at the top so it overlays the whole view. */}
+      <UpgradeModal
+        open={upgradeReason !== null}
+        onClose={() => setUpgradeReason(null)}
+        currentTier={subscriptionTier}
+        reason={upgradeReason ?? "custom_quiz"}
+      />
 
-      {/* ── Greeting + stats — stats on the right of the name ─────────── */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      {/* ── Greeting + stats — editorial typographic line, not a pill row ─
+          The four-pill LEAGUE/AVG/QUIZZES/WEEK grid was the single loudest
+          "vibecode dashboard" tell. Replacing it with a sentence in the
+          house voice makes the same numbers feel like an observation about
+          the reader, not a KPI dashboard for a B2B SaaS tool. */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            Welcome back{userName ? `, ${userName.split(" ")[0]}` : ""}
+          <h1 className="font-editorial-hero text-4xl leading-[1.1] text-[rgb(var(--foreground))] sm:text-5xl">
+            {userName
+              ? `Welcome back, ${userName.split(" ")[0]}.`
+              : "Welcome back."}
           </h1>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          <p className="mt-3 max-w-xl text-sm text-[rgb(var(--muted))]">
             {subscriptionTier === "free"
-              ? "Pick a quiz below to sharpen your memory."
-              : "Turn your notes into retrieval practice."}
+              ? "A quiet place to remember what you read. Pick up where you left off below."
+              : "A quiet place to remember what you read. Turn a chapter, a lecture, or a page of notes into questions."}
           </p>
         </div>
 
         {stats.totalSessions === 0 ? (
-          <p className="max-w-xs rounded-xl border border-dashed border-slate-200 bg-white/60 px-4 py-2.5 text-xs leading-relaxed text-slate-500 sm:text-right dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400">
-            You haven&apos;t played yet — your rank will appear here.
-          </p>
-        ) : (
-          <div className="flex flex-wrap gap-2 sm:justify-end">
-            <LeaguePill totalPoints={leaderboard.userTotalPoints} />
-            <StatPill
-              label="Avg score"
-              value={
-                stats.avgPercentage != null
-                  ? `${Math.round(stats.avgPercentage)}%`
-                  : "—"
-              }
-              accent={stats.avgPercentage != null && stats.avgPercentage >= 70}
-            />
-            <StatPill label="Quizzes" value={stats.totalSessions} />
-            <StatPill label="This week" value={stats.sessionsLast7Days} />
+          <div className="flex max-w-xs items-center gap-3 rounded-xl border border-[rgb(var(--accent)/0.2)] bg-[rgb(var(--accent)/0.06)] px-4 py-3 sm:self-end">
+            <span
+              aria-hidden
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[rgb(var(--accent))] text-base text-white"
+            >
+              ★
+            </span>
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[rgb(var(--accent-ink))]">
+                Your rank
+              </p>
+              <p className="mt-0.5 text-sm leading-snug text-[rgb(var(--foreground))]">
+                Play your first quiz to unlock it.
+              </p>
+            </div>
           </div>
+        ) : (
+          <EditorialStats
+            league={getLeague(leaderboard.userTotalPoints)}
+            avgPercentage={stats.avgPercentage}
+            totalSessions={stats.totalSessions}
+            sessionsLast7Days={stats.sessionsLast7Days}
+          />
         )}
       </div>
 
@@ -823,7 +868,7 @@ export function DashboardView({
                   }
                   className="h-[46px] w-full appearance-none rounded-xl border border-[rgb(var(--border))] bg-white px-3 py-2 pr-8 text-base text-[rgb(var(--foreground))] outline-none ring-accent/30 focus:border-accent focus:ring-2 sm:h-[42px] sm:text-sm"
                 >
-                  {QUESTION_COUNTS.map((n) => (
+                  {allowedCounts.map((n) => (
                     <option key={n} value={n}>{n}</option>
                   ))}
                 </select>

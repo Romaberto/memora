@@ -16,7 +16,12 @@ import {
 const FREE_DAYS = 7;
 const PRO_DAYS = 30;
 
-type Tier = "free" | "pro";
+/**
+ * The 30-day chart is a cheap perk: any paid tier gets it, free tier stays
+ * on the 7-day view. We accept all four tier ids and treat anything other
+ * than `"free"` as paid.
+ */
+type Tier = "free" | "builder" | "scholar" | "master";
 
 type Props = {
   sessions: SessionForDaily[];
@@ -45,7 +50,8 @@ export function DailyProgressDashboard({ sessions, subscriptionTier }: Props) {
   const [rangeDays, setRangeDays] = useState<number>(FREE_DAYS);
   const [selectedYmd, setSelectedYmd] = useState<string | null>(null);
 
-  const maxRange = subscriptionTier === "pro" ? PRO_DAYS : FREE_DAYS;
+  const isPaid = subscriptionTier !== "free";
+  const maxRange = isPaid ? PRO_DAYS : FREE_DAYS;
   const effectiveDays = Math.min(rangeDays, maxRange);
   const rangeLockedToSeven = subscriptionTier === "free";
 
@@ -170,7 +176,7 @@ export function DailyProgressDashboard({ sessions, subscriptionTier }: Props) {
             {/* 7/30 day range selector — placed near the chart */}
             <div
               className={`flex gap-0.5 rounded-lg p-0.5 ${
-                subscriptionTier === "pro"
+                isPaid
                   ? "border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900/60"
                   : "border border-slate-200 bg-slate-50/90 dark:border-slate-700 dark:bg-slate-900/50"
               }`}
@@ -191,7 +197,7 @@ export function DailyProgressDashboard({ sessions, subscriptionTier }: Props) {
               >
                 7d
               </button>
-              {subscriptionTier === "pro" ? (
+              {isPaid ? (
                 <button
                   type="button"
                   onClick={() => {
@@ -209,7 +215,7 @@ export function DailyProgressDashboard({ sessions, subscriptionTier }: Props) {
               ) : (
                 <span
                   className="inline-flex items-center gap-0.5 rounded-md px-2 py-1 text-[11px] font-medium text-slate-400 dark:text-slate-500"
-                  title="Included with Memora Pro"
+                  title="Unlocked on any paid plan"
                 >
                   <LockIcon className="h-3 w-3" />
                   30d

@@ -9,6 +9,7 @@ import { z } from "zod";
 import prisma from "@/lib/db";
 import { getSessionUserId } from "@/lib/auth";
 import { isAdmin } from "@/lib/admin";
+import { TIER_IDS } from "@/lib/tiers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,7 +17,10 @@ export const dynamic = "force-dynamic";
 const patchSchema = z
   .object({
     role: z.enum(["user", "admin"]).optional(),
-    subscriptionTier: z.enum(["free", "pro"]).optional(),
+    // Admins can assign any of the 4 tiers. `TIER_IDS` is the single source
+    // of truth in lib/tiers.ts — if we ever add/remove a tier there, this
+    // validator picks it up automatically.
+    subscriptionTier: z.enum(TIER_IDS).optional(),
     name: z.string().min(1).max(100).trim().optional(),
     nickname: z.string().max(50).trim().optional(),
   })

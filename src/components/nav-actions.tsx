@@ -41,6 +41,7 @@ export async function NavActions() {
         <div className="hidden items-center gap-1 md:flex">
           <NavLink href="/topics">Topics</NavLink>
           <NavLink href="/leaderboard">Leaderboard</NavLink>
+          <NavLink href="/pricing">Pricing</NavLink>
           <div className="ml-2 h-5 w-px bg-slate-200 dark:bg-slate-700" />
           <Link
             href="/login"
@@ -71,6 +72,7 @@ export async function NavActions() {
         <NavLink href="/dashboard">Dashboard</NavLink>
         <NavLink href="/topics">Topics</NavLink>
         <NavLink href="/leaderboard">Leaderboard</NavLink>
+        <NavLink href="/pricing">Pricing</NavLink>
 
         <div className="ml-2 h-5 w-px bg-slate-200 dark:bg-slate-700" />
 

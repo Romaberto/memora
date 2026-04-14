@@ -17,6 +17,7 @@ import prisma from "@/lib/db";
 import { getSessionUserId } from "@/lib/auth";
 import { isAdmin } from "@/lib/admin";
 import { getLeague } from "@/lib/leagues";
+import { TIER_IDS } from "@/lib/tiers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -63,7 +64,7 @@ export async function GET(req: NextRequest) {
       { nickname: { contains: search, mode: "insensitive" } },
     ];
   }
-  if (tierFilter === "free" || tierFilter === "pro") {
+  if (tierFilter && (TIER_IDS as readonly string[]).includes(tierFilter)) {
     where.subscriptionTier = tierFilter;
   }
 
