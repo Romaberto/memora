@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { z } from "zod";
-import { findByEmail } from "@/lib/csv-users";
+import prisma from "@/lib/db";
 import { verifyPassword } from "@/lib/password";
 import { createSessionToken, sessionCookieAttrs } from "@/lib/session";
 import { getClientIp, ratelimitAuth } from "@/lib/rate-limit";
@@ -35,18 +35,21 @@ export async function POST(req: Request) {
 
   const { email, password } = parsed.data;
 
-  // findByEmail now queries Prisma directly — no separate CSV file
-  const user = await findByEmail(email);
+  // Query user directly with onboardingCompleted for session token
+  const user = await prisma.user.findUnique({
+    where: { email: email.toLowerCase().trim() },
+    select: { id: true, name: true, passwordHash: true, onboardingCompleted: true },
+  });
   // Use the same generic message for both "not found" and "wrong password"
   // to avoid leaking which emails are registered.
-  if (!user || !(await verifyPassword(password, user.passwordHash))) {
+  if (!user || !user.passwordHash || !(await verifyPassword(password, user.passwordHash))) {
     return NextResponse.json(
       { error: "Invalid email or password." },
       { status: 401 },
     );
   }
 
-  const token = await createSessionToken(user.id);
+  const token = await createSessionToken(user.id, { onboardingCompleted: user.onboardingCompleted });
   cookies().set(sessionCookieAttrs(token));
 
   return NextResponse.json({ ok: true, name: user.name });

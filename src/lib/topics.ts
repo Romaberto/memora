@@ -79,6 +79,15 @@ export async function getUserTopicProgress(userId: string, topicSlug: string) {
   return best;
 }
 
+/** Get the slugs of topics the user selected during onboarding. */
+export async function getUserInterestedTopicSlugs(userId: string): Promise<string[]> {
+  const interests = await prisma.userTopicInterest.findMany({
+    where: { userId },
+    select: { topic: { select: { slug: true } } },
+  });
+  return interests.map((i) => i.topic.slug);
+}
+
 export async function getPremadeQuizById(premadeQuizId: string) {
   return prisma.premadeQuiz.findUnique({
     where: { id: premadeQuizId },

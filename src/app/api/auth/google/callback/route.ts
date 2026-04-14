@@ -99,6 +99,7 @@ export async function GET(req: Request) {
 
   // Find or create the user.
   let user = await prisma.user.findUnique({ where: { googleId: sub } });
+  let isNewUser = false;
 
   if (!user) {
     const byEmail = await prisma.user.findUnique({ where: { email } });
@@ -117,6 +118,7 @@ export async function GET(req: Request) {
       });
     } else {
       // Brand new user.
+      isNewUser = true;
       user = await prisma.user.create({
         data: {
           email,
@@ -131,10 +133,11 @@ export async function GET(req: Request) {
     }
   }
 
-  // Mint session and redirect to dashboard.
-  const token = await createSessionToken(user.id);
-  const dashboardUrl = new URL("/dashboard", req.url);
-  const res = NextResponse.redirect(dashboardUrl);
+  // Mint session and redirect based on onboarding status.
+  const onboardingCompleted = user.onboardingCompleted;
+  const token = await createSessionToken(user.id, { onboardingCompleted });
+  const redirectUrl = new URL(onboardingCompleted ? "/dashboard" : "/onboarding", req.url);
+  const res = NextResponse.redirect(redirectUrl);
   res.cookies.set(sessionCookieAttrs(token));
   // Clear single-use OAuth cookies.
   res.cookies.set({ name: OAUTH_STATE_COOKIE, value: "", path: "/", maxAge: 0 });

@@ -30,7 +30,7 @@ export default function RegisterPage() {
         setError(typeof data.error === "string" ? data.error : "Registration failed.");
         return;
       }
-      router.push("/dashboard");
+      router.push("/onboarding");
       router.refresh();
     } catch {
       setError("Network error. Please try again.");

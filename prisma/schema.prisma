@@ -37,10 +37,12 @@ model User {
   /// x-vercel-ip-country header (e.g. "US", "DE", "BR"). Null for users
   /// created before this field existed or when the header is unavailable.
   country       String?
+  onboardingCompleted Boolean @default(false)
   createdAt     DateTime  @default(now())
 
-  quizRequests QuizRequest[]
-  quizSessions QuizSession[]
+  quizRequests    QuizRequest[]
+  quizSessions    QuizSession[]
+  topicInterests  UserTopicInterest[]
 }
 
 model QuizRequest {
@@ -138,6 +140,19 @@ model Topic {
   createdAt   DateTime @default(now())
 
   premadeQuizzes PremadeQuiz[]
+  userInterests  UserTopicInterest[]
+}
+
+model UserTopicInterest {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topicId   String
+  topic     Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, topicId])
+  @@index([userId])
 }
 
 model PremadeQuiz {

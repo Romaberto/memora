@@ -51,8 +51,8 @@ export async function POST(req: Request) {
   const country = req.headers.get("x-vercel-ip-country") ?? null;
   const user = await createCsvUser(email, passwordHash, name, country);
 
-  // Issue session cookie
-  const token = await createSessionToken(user.id);
+  // Issue session cookie (new user — onboarding not yet completed)
+  const token = await createSessionToken(user.id, { onboardingCompleted: false });
   cookies().set(sessionCookieAttrs(token));
 
   return NextResponse.json({ ok: true, name: user.name }, { status: 201 });

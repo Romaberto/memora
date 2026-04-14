@@ -3,7 +3,7 @@ import { requireUserId } from "@/lib/auth";
 import { rankFromPercentage } from "@/lib/ranks";
 import { getLeaderboard, findUserRank } from "@/lib/leaderboard";
 import { getUserSubscription, getDailyQuizCount, FREE_DAILY_QUIZ_LIMIT } from "@/lib/subscription";
-import { getTopics } from "@/lib/topics";
+import { getTopics, getUserInterestedTopicSlugs } from "@/lib/topics";
 import {
   DashboardView,
   type DashboardRequestRow,
@@ -25,7 +25,7 @@ export default async function DashboardPage() {
   ]);
 
   // Fetch all dashboard + leaderboard data in parallel
-  const [guest, dashboardData, leaderboardEntries, allTopics] = await Promise.all([
+  const [guest, dashboardData, leaderboardEntries, allTopics, interestedSlugs] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId }, select: { name: true } }),
 
     Promise.all([
@@ -61,6 +61,7 @@ export default async function DashboardPage() {
 
     getLeaderboard("alltime", 10).catch(() => []),
     getTopics().catch(() => []),
+    getUserInterestedTopicSlugs(userId).catch(() => []),
   ]);
 
   if (!dashboardData) {
@@ -109,9 +110,15 @@ export default async function DashboardPage() {
   const overallRank = avgPct != null ? rankFromPercentage(Math.round(avgPct)) : null;
   const userRank    = findUserRank(leaderboardEntries, userId);
 
+  const interestSet = new Set(interestedSlugs);
   const topicChips = allTopics
     .filter((t) => t.quizCount > 0)
-    .map((t) => ({ slug: t.slug, name: t.name, icon: t.icon, quizCount: t.quizCount }));
+    .map((t) => ({ slug: t.slug, name: t.name, icon: t.icon, quizCount: t.quizCount }))
+    .sort((a, b) => {
+      const aInt = interestSet.has(a.slug) ? 0 : 1;
+      const bInt = interestSet.has(b.slug) ? 0 : 1;
+      return aInt - bInt;
+    });
 
   return (
     <>

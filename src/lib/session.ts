@@ -26,9 +26,12 @@ function secret(): Uint8Array {
   return new TextEncoder().encode(s);
 }
 
-/** Create a signed JWT containing the userId. */
-export async function createSessionToken(userId: string): Promise<string> {
-  return new SignJWT({ userId })
+/** Create a signed JWT containing the userId and optional claims. */
+export async function createSessionToken(
+  userId: string,
+  opts?: { onboardingCompleted?: boolean },
+): Promise<string> {
+  return new SignJWT({ userId, onboardingCompleted: opts?.onboardingCompleted ?? false })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("30d")
@@ -40,6 +43,23 @@ export async function verifySessionToken(token: string): Promise<string | null> 
   try {
     const { payload } = await jwtVerify(token, secret());
     return typeof payload.userId === "string" ? payload.userId : null;
+  } catch {
+    return null;
+  }
+}
+
+export type SessionPayload = { userId: string; onboardingCompleted: boolean };
+
+/** Verify a JWT and return the full session payload. */
+export async function verifySessionFull(token: string): Promise<SessionPayload | null> {
+  try {
+    const { payload } = await jwtVerify(token, secret());
+    if (typeof payload.userId !== "string") return null;
+    return {
+      userId: payload.userId,
+      // Treat missing claim as true (backward compat for existing users)
+      onboardingCompleted: payload.onboardingCompleted === false ? false : true,
+    };
   } catch {
     return null;
   }
