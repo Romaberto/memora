@@ -281,30 +281,9 @@ export function LandingPage({
         </div>
       </section>
 
-      {/* ── FOOTER ───────────────────────────────────────────── */}
-      <footer className="border-t border-[rgb(var(--border))] py-8">
-        <div className="mx-auto flex max-w-7xl flex-col items-center gap-4 px-4 sm:flex-row sm:justify-between sm:px-6">
-          <p className="text-sm text-[rgb(var(--muted))]">
-            © {new Date().getFullYear()}{" "}
-            <span className="font-semibold text-[rgb(var(--foreground))]">memora</span>
-            {" "}· Make knowledge stick.
-          </p>
-          <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-[rgb(var(--muted))]">
-            <Link href="/login" className="hover:text-[rgb(var(--foreground))] transition-colors">
-              Sign in
-            </Link>
-            <Link href="/contact" className="hover:text-[rgb(var(--foreground))] transition-colors">
-              Contact
-            </Link>
-            <Link href="/privacy" className="hover:text-[rgb(var(--foreground))] transition-colors">
-              Privacy
-            </Link>
-            <Link href="/terms" className="hover:text-[rgb(var(--foreground))] transition-colors">
-              Terms
-            </Link>
-          </div>
-        </div>
-      </footer>
+      {/* Footer now lives in the root layout (see src/components/
+          site-footer.tsx) so every page gets contact / privacy / terms
+          links, not just the landing page. */}
     </div>
   );
 }
