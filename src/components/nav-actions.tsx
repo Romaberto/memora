@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
-import { Button } from "./ui/button";
 import { UserAvatar } from "./user-avatar";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/session";
 import { findById } from "@/lib/csv-users";
@@ -15,6 +14,23 @@ async function getNavUser() {
   return await findById(userId);
 }
 
+function NavLink({
+  href,
+  children,
+}: {
+  href: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className="rounded-lg px-3 py-2 text-sm font-medium text-[rgb(var(--foreground))]/70 transition-colors duration-150 ease-out hover:bg-black/5 hover:text-[rgb(var(--foreground))] dark:hover:bg-white/5"
+    >
+      {children}
+    </Link>
+  );
+}
+
 export async function NavActions() {
   const user = await getNavUser();
 
@@ -22,16 +38,21 @@ export async function NavActions() {
     return (
       <>
         {/* Desktop */}
-        <div className="hidden items-center gap-2 sm:flex">
-          <Link href="/login">
-            <Button type="button" variant="ghost" className="!py-2 !text-sm">
-              Sign in
-            </Button>
+        <div className="hidden items-center gap-1 sm:flex">
+          <NavLink href="/topics">Topics</NavLink>
+          <NavLink href="/leaderboard">Leaderboard</NavLink>
+          <div className="ml-2 h-5 w-px bg-slate-200 dark:bg-slate-700" />
+          <Link
+            href="/login"
+            className="ml-2 rounded-lg px-3 py-2 text-sm font-medium text-[rgb(var(--foreground))]/70 transition-colors duration-150 ease-out hover:text-[rgb(var(--foreground))]"
+          >
+            Sign in
           </Link>
-          <Link href="/register">
-            <Button type="button" variant="primary" className="!py-2 !text-sm">
-              Register
-            </Button>
+          <Link
+            href="/register"
+            className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white shadow-sm transition-[background-color,transform] duration-150 ease-out hover:bg-emerald-600 active:scale-[0.97]"
+          >
+            Register
           </Link>
         </div>
 
@@ -46,24 +67,17 @@ export async function NavActions() {
   return (
     <>
       {/* Desktop */}
-      <div className="hidden items-center gap-2 sm:flex sm:gap-3">
-        <Link href="/dashboard">
-          <Button type="button" variant="primary" className="!py-2 !text-sm">
-            Dashboard
-          </Button>
-        </Link>
+      <div className="hidden items-center gap-1 sm:flex">
+        <NavLink href="/dashboard">Dashboard</NavLink>
+        <NavLink href="/topics">Topics</NavLink>
+        <NavLink href="/leaderboard">Leaderboard</NavLink>
 
-        <Link
-          href="/leaderboard"
-          className="text-sm font-medium text-[rgb(var(--muted))] transition-colors duration-150 ease-out hover:text-[rgb(var(--foreground))]"
-        >
-          Leaderboard
-        </Link>
+        <div className="ml-2 h-5 w-px bg-slate-200 dark:bg-slate-700" />
 
         {/* Avatar + name → profile page */}
         <Link
           href="/profile"
-          className="group flex items-center gap-2 rounded-xl px-2 py-1 transition-[background-color,transform] duration-150 ease-out hover:bg-black/5 active:scale-[0.97]"
+          className="group ml-2 flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors duration-150 ease-out hover:bg-black/5 dark:hover:bg-white/5"
           title="Your profile"
         >
           <UserAvatar
@@ -71,7 +85,7 @@ export async function NavActions() {
             name={displayName}
             size="sm"
           />
-          <span className="text-sm font-medium text-[rgb(var(--muted))] transition-colors duration-150 ease-out group-hover:text-[rgb(var(--foreground))]">
+          <span className="text-sm font-medium text-[rgb(var(--foreground))]/70 transition-colors duration-150 ease-out group-hover:text-[rgb(var(--foreground))]">
             {displayName}
           </span>
         </Link>

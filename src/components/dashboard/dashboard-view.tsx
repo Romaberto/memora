@@ -755,7 +755,7 @@ export function DashboardView({
                     Debug prompt
                   </label>
                 )}
-                {hasHistory && !loading && (
+                {!loading && (
                   <button
                     type="button"
                     onClick={() => setFormExpanded(false)}

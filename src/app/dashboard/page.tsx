@@ -3,11 +3,13 @@ import { requireUserId } from "@/lib/auth";
 import { rankFromPercentage } from "@/lib/ranks";
 import { getLeaderboard, findUserRank } from "@/lib/leaderboard";
 import { getUserSubscription, getDailyQuizCount, FREE_DAILY_QUIZ_LIMIT } from "@/lib/subscription";
+import { getTopics } from "@/lib/topics";
 import {
   DashboardView,
   type DashboardRequestRow,
   type DashboardSessionRow,
 } from "@/components/dashboard/dashboard-view";
+import { TopicStrip } from "@/components/dashboard/topic-strip";
 
 const nonFallbackRequest = { usedFallback: false } as const;
 
@@ -23,7 +25,7 @@ export default async function DashboardPage() {
   ]);
 
   // Fetch all dashboard + leaderboard data in parallel
-  const [guest, dashboardData, leaderboardEntries] = await Promise.all([
+  const [guest, dashboardData, leaderboardEntries, allTopics] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId }, select: { name: true } }),
 
     Promise.all([
@@ -58,6 +60,7 @@ export default async function DashboardPage() {
     }),
 
     getLeaderboard("alltime", 10).catch(() => []),
+    getTopics().catch(() => []),
   ]);
 
   if (!dashboardData) {
@@ -106,7 +109,17 @@ export default async function DashboardPage() {
   const overallRank = avgPct != null ? rankFromPercentage(Math.round(avgPct)) : null;
   const userRank    = findUserRank(leaderboardEntries, userId);
 
+  const topicChips = allTopics
+    .filter((t) => t.quizCount > 0)
+    .map((t) => ({ slug: t.slug, name: t.name, icon: t.icon, quizCount: t.quizCount }));
+
   return (
+    <>
+    {topicChips.length > 0 && (
+      <div className="mx-auto max-w-4xl px-4 pt-6 sm:px-6">
+        <TopicStrip topics={topicChips} />
+      </div>
+    )}
     <DashboardView
       userName={guest?.name ?? "Guest"}
       requests={requestRows}
@@ -123,5 +136,6 @@ export default async function DashboardPage() {
         userTotalPoints: leaderboardEntries.find((e) => e.userId === userId)?.totalPoints ?? 0,
       }}
     />
+    </>
   );
 }

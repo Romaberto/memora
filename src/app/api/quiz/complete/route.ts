@@ -35,11 +35,16 @@ export async function POST(req: Request) {
   }
 
   const request = await prisma.quizRequest.findFirst({
-    where: { id: quizRequestId, userId },
+    where: { id: quizRequestId },
     include: { questions: { orderBy: { order: "asc" } } },
   });
 
   if (!request) {
+    return NextResponse.json({ error: "Quiz not found" }, { status: 404 });
+  }
+
+  // Allow if user owns the quiz OR it's a pre-made quiz (public)
+  if (request.userId !== userId && !request.isPremade) {
     return NextResponse.json({ error: "Quiz not found" }, { status: 404 });
   }
 

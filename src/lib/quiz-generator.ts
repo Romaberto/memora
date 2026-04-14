@@ -144,6 +144,8 @@ function buildUserPrompt(input: {
     `Generate a quiz with EXACTLY ${n} multiple-choice questions.`,
     "",
     buildSourceInputBlock(input),
+    "",
+    `FINAL REMINDER: Your output MUST contain exactly ${n} questions. Count them before responding.`,
   ];
   return parts.join("\n");
 }
@@ -168,8 +170,8 @@ function normalizeIds(payload: QuizPayload): QuizPayload {
 
 // With OpenAI structured outputs, JSON / shape errors are no longer possible,
 // so the only failure modes left are network errors and the model returning
-// the wrong number of questions. 2 attempts is plenty.
-const QUIZ_MAX_ATTEMPTS = 2;
+// the wrong number of questions. 3 attempts with top-up covers edge cases.
+const QUIZ_MAX_ATTEMPTS = 3;
 
 const TOP_UP_SYSTEM_PROMPT = `You add questions to an existing multiple-choice quiz. Output one JSON object only (no markdown, no code fences).
 Shape: { "questions": [ ... ] } — nothing else at the top level.
@@ -346,8 +348,10 @@ export async function generateQuizPayload(
 
     let raw: string;
     try {
-      // Scale max_tokens based on question count (~150 tokens per question)
-      const maxTokens = Math.max(4000, input.questionCount * 150);
+      // Scale max_tokens based on question count. Each question with 4 options
+      // + explanation averages ~200-250 tokens in structured JSON output.
+      // Use 250/q to avoid truncation, especially at 40-50 questions.
+      const maxTokens = Math.max(4000, input.questionCount * 250);
       raw = await ai.completeJson({
         system: QUIZ_SYSTEM_PROMPT,
         user: userPrompt + retryHint,

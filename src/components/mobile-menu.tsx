@@ -113,6 +113,13 @@ export function MobileMenu({ user }: { user: MobileUser }) {
                 Dashboard
               </Link>
               <Link
+                href="/topics"
+                onClick={close}
+                className="rounded-xl px-3 py-3 text-base font-medium text-[rgb(var(--foreground))] transition-colors duration-150 ease-out hover:bg-black/5"
+              >
+                Topics
+              </Link>
+              <Link
                 href="/leaderboard"
                 onClick={close}
                 className="rounded-xl px-3 py-3 text-base font-medium text-[rgb(var(--foreground))] transition-colors duration-150 ease-out hover:bg-black/5"

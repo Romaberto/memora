@@ -57,9 +57,12 @@ model QuizRequest {
   generatedQuiz String
   /// True when the quiz body was the built-in sample (not OpenAI). Hidden from dashboard history.
   usedFallback  Boolean  @default(false)
+  /// True for system-generated pre-made quizzes (available to all users).
+  isPremade     Boolean  @default(false)
 
-  questions QuizQuestion[]
-  sessions  QuizSession[]
+  questions    QuizQuestion[]
+  sessions     QuizSession[]
+  premadeQuiz  PremadeQuiz?
 
   createdAt DateTime @default(now())
 
@@ -121,6 +124,37 @@ model QuizAnswer {
 
   @@unique([quizSessionId, quizQuestionId])
 }
+
+// ─── Pre-made topic quizzes ──────────────────────────────────────────────────
+
+model Topic {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  description String
+  icon        String?
+  color       String?
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  premadeQuizzes PremadeQuiz[]
+}
+
+model PremadeQuiz {
+  id            String      @id @default(cuid())
+  topicId       String
+  topic         Topic       @relation(fields: [topicId], references: [id])
+  quizRequestId String      @unique
+  quizRequest   QuizRequest @relation(fields: [quizRequestId], references: [id], onDelete: Cascade)
+  title         String
+  difficulty    String      @default("intermediate")
+  quizNumber    Int
+  createdAt     DateTime    @default(now())
+
+  @@unique([topicId, quizNumber])
+}
+
+// ─── Contact ─────────────────────────────────────────────────────────────────
 
 /// Contact form submissions from /contact. Stored in the DB so they're
 /// queryable and don't depend on an external email provider.
