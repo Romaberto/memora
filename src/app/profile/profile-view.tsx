@@ -8,6 +8,8 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { UserAvatar } from "@/components/user-avatar";
 import { formatDurationHuman } from "@/lib/format-quiz-clock";
 import type { League } from "@/lib/leagues";
+import { getTopicColors } from "@/lib/topic-colors";
+import type { TopicWithCount } from "@/lib/topics";
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
@@ -31,7 +33,13 @@ type ProfileStats = {
   avgSecondsPerQuestion: number | null;
 };
 
-type Props = { user: ProfileUser; stats: ProfileStats; league: League };
+type Props = {
+  user: ProfileUser;
+  stats: ProfileStats;
+  league: League;
+  topics: TopicWithCount[];
+  selectedTopicIds: string[];
+};
 
 // ─── small helpers ────────────────────────────────────────────────────────────
 
@@ -92,9 +100,19 @@ function CheckIcon() {
   );
 }
 
+function SparkIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M12 3l1.7 5.3L19 10l-5.3 1.7L12 17l-1.7-5.3L5 10l5.3-1.7L12 3z" />
+      <path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15z" />
+    </svg>
+  );
+}
+
 // ─── main component ───────────────────────────────────────────────────────────
 
-export function ProfileView({ user, stats, league }: Props) {
+export function ProfileView({ user, stats, league, topics, selectedTopicIds }: Props) {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -115,6 +133,13 @@ export function ProfileView({ user, stats, league }: Props) {
   const [confirmPwd, setConfirmPwd] = useState("");
   const [pwdSaving, setPwdSaving] = useState(false);
   const [pwdMsg, setPwdMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  // ── interests state
+  const [selectedTopics, setSelectedTopics] = useState<Set<string>>(
+    () => new Set(selectedTopicIds),
+  );
+  const [topicsSaving, setTopicsSaving] = useState(false);
+  const [topicsMsg, setTopicsMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const displayName = nickname || name || user.email;
 
@@ -214,6 +239,46 @@ export function ProfileView({ user, stats, league }: Props) {
       setPwdMsg({ ok: false, text: "Network error." });
     } finally {
       setPwdSaving(false);
+    }
+  }
+
+  // ── topic interests ────────────────────────────────────────────────────────
+
+  function toggleTopic(topicId: string) {
+    setTopicsMsg(null);
+    setSelectedTopics((prev) => {
+      const next = new Set(prev);
+      if (next.has(topicId)) next.delete(topicId);
+      else next.add(topicId);
+      return next;
+    });
+  }
+
+  async function handleTopicsSave() {
+    if (selectedTopics.size < 3) {
+      setTopicsMsg({ ok: false, text: "Pick at least 3 topics." });
+      return;
+    }
+
+    setTopicsSaving(true);
+    setTopicsMsg(null);
+    try {
+      const res = await fetch("/api/profile/topics", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topicIds: Array.from(selectedTopics) }),
+      });
+      const data = await res.json().catch(() => ({})) as Record<string, unknown>;
+      if (!res.ok) {
+        setTopicsMsg({ ok: false, text: typeof data.error === "string" ? data.error : "Save failed." });
+        return;
+      }
+      setTopicsMsg({ ok: true, text: "Interests updated." });
+      router.refresh();
+    } catch {
+      setTopicsMsg({ ok: false, text: "Network error." });
+    } finally {
+      setTopicsSaving(false);
     }
   }
 
@@ -531,6 +596,90 @@ export function ProfileView({ user, stats, league }: Props) {
                   sub="per question"
                 />
               </div>
+            )}
+          </Card>
+
+          {/* Learning interests card */}
+          <Card>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <CardTitle>Learning interests</CardTitle>
+                <p className="mt-1 text-xs text-slate-500">
+                  These shape the quizzes picked for your dashboard.
+                </p>
+              </div>
+              <span className="shrink-0 rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                {selectedTopics.size}/{topics.length}
+              </span>
+            </div>
+
+            {topics.length === 0 ? (
+              <p className="mt-4 text-sm text-slate-500">
+                Topics are still being generated.
+              </p>
+            ) : (
+              <>
+                <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                  {topics.map((topic) => {
+                    const tile = getTopicColors(topic.color);
+                    const isSelected = selectedTopics.has(topic.id);
+                    return (
+                      <button
+                        key={topic.id}
+                        type="button"
+                        onClick={() => toggleTopic(topic.id)}
+                        className={`group relative flex min-h-[76px] items-start gap-3 rounded-xl border p-3 text-left transition-[border-color,box-shadow,transform] duration-150 ease-out active:scale-[0.98] ${
+                          isSelected
+                            ? `${tile.border} bg-white shadow-[0_2px_8px_rgba(26,26,32,0.08)] ring-2 ${tile.ring}`
+                            : "border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-white dark:border-slate-700 dark:bg-slate-800/40 dark:hover:border-slate-600"
+                        }`}
+                        aria-pressed={isSelected}
+                      >
+                        <span
+                          aria-hidden
+                          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-lg ${tile.bg}`}
+                        >
+                          {topic.icon ?? <SparkIcon />}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className={`block text-sm font-semibold leading-tight ${isSelected ? tile.text : "text-slate-800 dark:text-slate-100"}`}>
+                            {topic.name}
+                          </span>
+                          <span className="mt-1 block text-[11px] text-slate-500">
+                            {topic.quizCount} quizzes
+                          </span>
+                        </span>
+                        {isSelected && (
+                          <span className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-accent text-white">
+                            <CheckIcon />
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-xs text-slate-500">
+                    Pick at least 3. New recommendations appear after saving.
+                  </p>
+                  <Button
+                    type="button"
+                    onClick={() => void handleTopicsSave()}
+                    disabled={topicsSaving || selectedTopics.size < 3}
+                    className="w-full sm:w-auto"
+                  >
+                    {topicsSaving ? "Saving…" : "Save interests"}
+                  </Button>
+                </div>
+
+                {topicsMsg && (
+                  <p className={`mt-3 ${msgCls(topicsMsg.ok)}`}>
+                    {topicsMsg.ok && <CheckIcon />}
+                    {topicsMsg.text}
+                  </p>
+                )}
+              </>
             )}
           </Card>
 
