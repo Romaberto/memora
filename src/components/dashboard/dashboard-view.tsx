@@ -258,19 +258,39 @@ function MiniLeaderboard({ leaderboard }: {
 function ScoreRing({ correct, total, percentage, size = 36 }: { correct: number; total: number; percentage: number; size?: number }) {
   const r = (size - 4) / 2;
   const c = 2 * Math.PI * r;
-  const filled = (percentage / 100) * c;
+  const filled = Math.max(0, Math.min(c, (percentage / 100) * c));
   const color =
     percentage >= 80 ? "stroke-emerald-500" :
     percentage >= 60 ? "stroke-amber-500" :
     "stroke-rose-400";
   return (
-    <svg width={size} height={size} className="shrink-0 -rotate-90">
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" className="stroke-slate-200 dark:stroke-slate-700" strokeWidth={3} />
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" className={color} strokeWidth={3} strokeDasharray={`${filled} ${c - filled}`} strokeLinecap="round" />
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="block shrink-0" aria-hidden="true">
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        fill="none"
+        className="stroke-slate-200 dark:stroke-slate-700"
+        strokeWidth={3}
+      />
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        fill="none"
+        className={color}
+        strokeWidth={3}
+        strokeDasharray={c}
+        strokeDashoffset={c - filled}
+        strokeLinecap="round"
+        transform={`rotate(-90 ${size / 2} ${size / 2})`}
+      />
       <text
-        x={size / 2} y={size / 2}
-        textAnchor="middle" dominantBaseline="central"
-        className="fill-slate-700 dark:fill-slate-200 rotate-90 origin-center"
+        x={size / 2}
+        y={size / 2}
+        textAnchor="middle"
+        dominantBaseline="central"
+        className="fill-slate-700 dark:fill-slate-200"
         style={{ fontSize: size * 0.24, fontWeight: 700 }}
       >
         {correct}/{total}
@@ -300,10 +320,10 @@ function ActivitySection({
 
   return (
     <Card>
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <CardTitle>Activity</CardTitle>
         {/* Tab switcher */}
-        <div className="inline-flex gap-1 rounded-lg border border-slate-200 bg-slate-50 p-0.5 dark:border-slate-700 dark:bg-slate-900/60" role="group">
+        <div className="inline-flex self-start gap-1 rounded-lg border border-slate-200 bg-slate-50 p-0.5 dark:border-slate-700 dark:bg-slate-900/60" role="group">
           {([
             { key: "runs" as ActivityTab, label: "Runs", count: sessions.length },
             { key: "topics" as ActivityTab, label: "Topics", count: requests.length },
@@ -351,11 +371,18 @@ function ActivitySection({
                 <li key={s.id}>
                   <Link
                     href={`/dashboard/session/${s.id}`}
-                    className="group flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors duration-150 ease-out hover:bg-slate-50 active:scale-[0.995] dark:hover:bg-slate-800/40"
+                    className="group grid grid-cols-[44px_minmax(0,1fr)_auto] items-start gap-x-3 rounded-xl px-2 py-2.5 transition-colors duration-150 ease-out hover:bg-slate-50 active:scale-[0.995] dark:hover:bg-slate-800/40 sm:px-3"
                   >
-                    <ScoreRing correct={Math.round(s.percentage / 100 * s.questionCount)} total={s.questionCount} percentage={s.percentage} />
+                    <div className="flex h-11 w-11 items-center justify-center self-start">
+                      <ScoreRing
+                        correct={Math.round((s.percentage / 100) * s.questionCount)}
+                        total={s.questionCount}
+                        percentage={s.percentage}
+                        size={34}
+                      />
+                    </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-slate-900 dark:text-white">
+                      <p className="truncate text-sm font-medium leading-tight text-slate-900 dark:text-white">
                         {s.topic}
                       </p>
                       <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-slate-500">
@@ -369,11 +396,13 @@ function ActivitySection({
                         )}
                       </div>
                     </div>
-                    <span className="shrink-0 text-sm font-bold tabular-nums text-slate-700 dark:text-slate-300">
-                      {s.score}
-                      <span className="ml-0.5 text-[10px] font-normal text-slate-400">pts</span>
-                    </span>
-                    <svg className="h-4 w-4 shrink-0 text-slate-300 transition-transform duration-150 ease-out group-hover:translate-x-0.5 dark:text-slate-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6" /></svg>
+                    <div className="ml-2 flex items-center gap-2 self-center">
+                      <span className="shrink-0 text-right text-sm font-bold tabular-nums text-slate-700 dark:text-slate-300">
+                        {s.score}
+                        <span className="ml-0.5 text-[10px] font-normal text-slate-400">pts</span>
+                      </span>
+                      <svg className="h-4 w-4 shrink-0 text-slate-300 transition-transform duration-150 ease-out group-hover:translate-x-0.5 dark:text-slate-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6" /></svg>
+                    </div>
                   </Link>
                 </li>
               ))}
