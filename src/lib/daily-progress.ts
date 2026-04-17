@@ -7,20 +7,27 @@ export type SessionForDaily = {
   topic: string;
 };
 
-export type DayBucket = {
+export type ProgressGranularity = "day" | "week" | "month";
+
+export type ProgressBucket = {
+  key: string;
+  label: string;
+  ariaLabel: string;
   sessions: SessionForDaily[];
   totalScore: number;
-  /** Average accuracy across sessions that day, null if none */
   avgPercentage: number | null;
   count: number;
+  isCurrent: boolean;
 };
 
-export function formatLocalYMD(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
+type BucketWindow = {
+  key: string;
+  label: string;
+  ariaLabel: string;
+  start: Date;
+  end: Date;
+  isCurrent: boolean;
+};
 
 const WEEKDAY_SHORT_EN = [
   "Sun",
@@ -32,81 +39,199 @@ const WEEKDAY_SHORT_EN = [
   "Sat",
 ] as const;
 
-/**
- * Human label for a calendar `YYYY-MM-DD` key. Fixed English + explicit order so
- * SSR and browser match (avoids `toLocaleDateString` locale ordering drift).
- */
-export function dayKeyShortLabel(ymd: string): string {
-  const parts = ymd.split("-").map(Number);
-  const y = parts[0];
-  const m = parts[1];
-  const d = parts[2];
-  if (
-    y === undefined ||
-    m === undefined ||
-    d === undefined ||
-    Number.isNaN(y) ||
-    Number.isNaN(m) ||
-    Number.isNaN(d)
-  ) {
-    return ymd;
-  }
-  const utcNoon = Date.UTC(y, m - 1, d, 12, 0, 0);
-  const wd = WEEKDAY_SHORT_EN[new Date(utcNoon).getUTCDay()];
-  return `${wd} ${d}`;
+const MONTH_SHORT_EN = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+] as const;
+
+function startOfLocalDay(date: Date): Date {
+  const copy = new Date(date);
+  copy.setHours(0, 0, 0, 0);
+  return copy;
 }
 
-/** Oldest → newest (today last). */
-export function lastNDayKeys(n: number): string[] {
-  const out: string[] = [];
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  for (let i = 0; i < n; i++) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - (n - 1 - i));
-    out.push(formatLocalYMD(d));
-  }
-  return out;
+function endOfLocalDay(date: Date): Date {
+  const copy = new Date(date);
+  copy.setHours(23, 59, 59, 999);
+  return copy;
 }
 
-export function buildDayBuckets(
-  sessions: SessionForDaily[],
-  dayKeys: string[],
-): Map<string, DayBucket> {
-  const lists = new Map<string, SessionForDaily[]>();
-  for (const key of dayKeys) lists.set(key, []);
+function addDays(date: Date, days: number): Date {
+  const copy = new Date(date);
+  copy.setDate(copy.getDate() + days);
+  return copy;
+}
 
-  for (const s of sessions) {
-    const key = formatLocalYMD(new Date(s.createdAt));
-    const bucket = lists.get(key);
-    if (bucket) bucket.push(s);
+function maxDate(a: Date, b: Date): Date {
+  return a.getTime() >= b.getTime() ? a : b;
+}
+
+function minDate(a: Date, b: Date): Date {
+  return a.getTime() <= b.getTime() ? a : b;
+}
+
+function monthStart(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function monthEnd(date: Date): Date {
+  return endOfLocalDay(new Date(date.getFullYear(), date.getMonth() + 1, 0));
+}
+
+function fullDateLabel(date: Date): string {
+  return `${MONTH_SHORT_EN[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
+}
+
+function dayShortLabel(date: Date): string {
+  return `${WEEKDAY_SHORT_EN[date.getDay()]} ${date.getDate()}`;
+}
+
+function weekShortLabel(start: Date, end: Date): string {
+  if (start.getMonth() === end.getMonth()) {
+    return `${MONTH_SHORT_EN[start.getMonth()]} ${start.getDate()}-${end.getDate()}`;
   }
+  return `${MONTH_SHORT_EN[start.getMonth()]} ${start.getDate()}`;
+}
 
-  const out = new Map<string, DayBucket>();
-  for (const key of dayKeys) {
-    const list = lists.get(key) ?? [];
-    const totalScore = list.reduce((a, x) => a + x.score, 0);
-    const avgPercentage =
-      list.length === 0
-        ? null
-        : list.reduce((a, x) => a + x.percentage, 0) / list.length;
-    out.set(key, {
-      sessions: list.sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      ),
-      totalScore,
-      avgPercentage,
-      count: list.length,
+function monthShortLabel(date: Date): string {
+  return `${MONTH_SHORT_EN[date.getMonth()]} ${String(date.getFullYear()).slice(-2)}`;
+}
+
+function monthLongLabel(date: Date): string {
+  return `${MONTH_SHORT_EN[date.getMonth()]} ${date.getFullYear()}`;
+}
+
+function buildDayWindows(rangeStart: Date, rangeEnd: Date, today: Date): BucketWindow[] {
+  const windows: BucketWindow[] = [];
+  for (let cursor = new Date(rangeStart); cursor <= rangeEnd; cursor = addDays(cursor, 1)) {
+    windows.push({
+      key: formatLocalYMD(cursor),
+      label: dayShortLabel(cursor),
+      ariaLabel: fullDateLabel(cursor),
+      start: startOfLocalDay(cursor),
+      end: endOfLocalDay(cursor),
+      isCurrent: cursor.getTime() === today.getTime(),
     });
   }
-  return out;
+  return windows;
 }
 
-export function periodTotals(
-  dayKeys: string[],
-  buckets: Map<string, DayBucket>,
-): {
+function buildWeekWindows(rangeStart: Date, rangeEnd: Date, today: Date): BucketWindow[] {
+  const windows: BucketWindow[] = [];
+  for (let cursor = new Date(rangeStart); cursor <= rangeEnd; cursor = addDays(cursor, 7)) {
+    const start = startOfLocalDay(cursor);
+    const end = endOfLocalDay(minDate(addDays(start, 6), rangeEnd));
+    windows.push({
+      key: `${formatLocalYMD(start)}:${formatLocalYMD(end)}`,
+      label: weekShortLabel(start, end),
+      ariaLabel: `${fullDateLabel(start)} to ${fullDateLabel(end)}`,
+      start,
+      end,
+      isCurrent:
+        today.getTime() >= start.getTime() && today.getTime() <= end.getTime(),
+    });
+  }
+  return windows;
+}
+
+function buildMonthWindows(rangeStart: Date, rangeEnd: Date, today: Date): BucketWindow[] {
+  const windows: BucketWindow[] = [];
+  for (
+    let cursor = monthStart(rangeStart);
+    cursor <= rangeEnd;
+    cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1)
+  ) {
+    const start = maxDate(startOfLocalDay(cursor), rangeStart);
+    const end = minDate(monthEnd(cursor), endOfLocalDay(rangeEnd));
+    windows.push({
+      key: `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`,
+      label: monthShortLabel(cursor),
+      ariaLabel: monthLongLabel(cursor),
+      start,
+      end,
+      isCurrent:
+        today.getTime() >= start.getTime() && today.getTime() <= end.getTime(),
+    });
+  }
+  return windows;
+}
+
+export function formatLocalYMD(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+export function buildProgressBuckets(
+  sessions: SessionForDaily[],
+  {
+    startDate,
+    endDate,
+    granularity,
+  }: {
+    startDate: Date;
+    endDate: Date;
+    granularity: ProgressGranularity;
+  },
+): ProgressBucket[] {
+  const today = startOfLocalDay(new Date());
+  const rangeStart = startOfLocalDay(startDate);
+  const rangeEnd = endOfLocalDay(endDate);
+  const filteredSessions = sessions.filter((session) => {
+    const createdAt = new Date(session.createdAt).getTime();
+    return createdAt >= rangeStart.getTime() && createdAt <= rangeEnd.getTime();
+  });
+
+  const windows =
+    granularity === "month"
+      ? buildMonthWindows(rangeStart, rangeEnd, today)
+      : granularity === "week"
+        ? buildWeekWindows(rangeStart, rangeEnd, today)
+        : buildDayWindows(rangeStart, rangeEnd, today);
+
+  return windows.map((window) => {
+    const bucketSessions = filteredSessions
+      .filter((session) => {
+        const createdAt = new Date(session.createdAt).getTime();
+        return createdAt >= window.start.getTime() && createdAt <= window.end.getTime();
+      })
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      );
+
+    const totalScore = bucketSessions.reduce((sum, session) => sum + session.score, 0);
+    const avgPercentage =
+      bucketSessions.length === 0
+        ? null
+        : bucketSessions.reduce((sum, session) => sum + session.percentage, 0) /
+          bucketSessions.length;
+
+    return {
+      key: window.key,
+      label: window.label,
+      ariaLabel: window.ariaLabel,
+      sessions: bucketSessions,
+      totalScore,
+      avgPercentage,
+      count: bucketSessions.length,
+      isCurrent: window.isCurrent,
+    };
+  });
+}
+
+export function periodTotals(buckets: ProgressBucket[]): {
   sessionCount: number;
   totalScore: number;
   avgPercentage: number | null;
@@ -115,35 +240,50 @@ export function periodTotals(
   let totalScore = 0;
   let pctWeighted = 0;
 
-  for (const k of dayKeys) {
-    const b = buckets.get(k);
-    if (!b) continue;
-    sessionCount += b.count;
-    totalScore += b.totalScore;
-    if (b.count > 0 && b.avgPercentage != null) {
-      pctWeighted += b.avgPercentage * b.count;
+  for (const bucket of buckets) {
+    sessionCount += bucket.count;
+    totalScore += bucket.totalScore;
+    if (bucket.count > 0 && bucket.avgPercentage != null) {
+      pctWeighted += bucket.avgPercentage * bucket.count;
     }
   }
 
   return {
     sessionCount,
     totalScore,
-    avgPercentage:
-      sessionCount === 0 ? null : pctWeighted / sessionCount,
+    avgPercentage: sessionCount === 0 ? null : pctWeighted / sessionCount,
   };
 }
 
-export function bestDayInPeriod(
-  dayKeys: string[],
-  buckets: Map<string, DayBucket>,
-): { key: string; totalScore: number } | null {
-  let best: { key: string; totalScore: number } | null = null;
-  for (const k of dayKeys) {
-    const b = buckets.get(k);
-    if (!b || b.totalScore === 0) continue;
-    if (!best || b.totalScore > best.totalScore) {
-      best = { key: k, totalScore: b.totalScore };
+export function bestBucketInPeriod(
+  buckets: ProgressBucket[],
+): { key: string; totalScore: number; label: string } | null {
+  let best: { key: string; totalScore: number; label: string } | null = null;
+  for (const bucket of buckets) {
+    if (bucket.totalScore === 0) continue;
+    if (!best || bucket.totalScore > best.totalScore) {
+      best = {
+        key: bucket.key,
+        totalScore: bucket.totalScore,
+        label: bucket.label,
+      };
     }
   }
   return best;
+}
+
+export function daysToGranularity(days: number): ProgressGranularity {
+  if (days >= 365) return "month";
+  if (days >= 120) return "week";
+  return "day";
+}
+
+export function maxScoreInBuckets(buckets: ProgressBucket[]): number {
+  return buckets.reduce((max, bucket) => Math.max(max, bucket.totalScore), 1);
+}
+
+export function scrollHintText(granularity: ProgressGranularity): string {
+  if (granularity === "month") return "Select a month above to review the quizzes from that month.";
+  if (granularity === "week") return "Select a week above to review the quizzes from that stretch.";
+  return "Select a day above to list quizzes from that day.";
 }

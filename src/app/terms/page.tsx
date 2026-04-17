@@ -24,7 +24,7 @@ export default function TermsPage() {
           <h2 className="mb-2 text-base font-semibold text-[rgb(var(--foreground))]">2. Description of service</h2>
           <p>
             Memora is an AI-powered learning tool that generates multiple-choice quizzes from user-provided text.
-            The Service includes a free tier and may include paid subscription plans (&quot;Pro&quot;) with additional features or higher usage limits.
+            The Service includes a free tier and may include paid subscription plans with additional features or higher usage limits.
           </p>
           <p>We reserve the right to modify, suspend, or discontinue any part of the Service (including features, usage limits, or pricing) at any time, with or without notice. We shall not be liable to you or any third party for any modification, suspension, or discontinuation of the Service.</p>
         </section>
@@ -44,8 +44,8 @@ export default function TermsPage() {
         <section>
           <h2 className="mb-2 text-base font-semibold text-[rgb(var(--foreground))]">5. Free and paid plans</h2>
           <p><strong>Free tier.</strong> The free tier allows a limited number of quizzes per day. We may adjust these limits at our sole discretion without notice. The free tier is provided without any uptime or availability guarantees.</p>
-          <p><strong>Pro subscriptions.</strong> Paid plans are billed on a recurring basis (monthly or annually, as selected at the time of purchase). All prices are in US dollars and exclude applicable taxes, which are your responsibility. Prices may change with at least 30 days&apos; prior notice; if you do not agree to the new price, you may cancel before the next billing cycle.</p>
-          <p><strong>Cancellation.</strong> You may cancel your subscription at any time through your account settings. Cancellation takes effect at the end of the current billing period. You will retain access to Pro features until the end of the period you have already paid for.</p>
+          <p><strong>Paid subscriptions.</strong> Paid plans are billed on a recurring basis (monthly or annually, as selected at the time of purchase). All prices are in US dollars and exclude applicable taxes, which are your responsibility. Prices may change with at least 30 days&apos; prior notice; if you do not agree to the new price, you may cancel before the next billing cycle.</p>
+          <p><strong>Cancellation.</strong> You may cancel your subscription at any time through your account settings. Cancellation takes effect at the end of the current billing period. You will retain access to paid-plan features until the end of the period you have already paid for.</p>
           <p><strong>Refunds.</strong> Payments are non-refundable except where required by applicable law. If you believe you were charged in error, contact us within 14 days of the charge, and we will investigate in good faith. We may, at our sole discretion, issue partial or full refunds in exceptional circumstances.</p>
         </section>
 

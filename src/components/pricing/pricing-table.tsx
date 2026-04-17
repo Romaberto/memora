@@ -96,6 +96,7 @@ function PricingCard({
     billing === "annual"
       ? Math.round(getAnnualPrice(tier) / 12)
       : tier.priceMonthly;
+  const [featuredFeature, ...secondaryFeatures] = tier.features;
 
   const isFree = tier.priceMonthly === 0;
   const isHighlight = !!tier.highlight;
@@ -114,7 +115,7 @@ function PricingCard({
         </span>
       )}
 
-      <header>
+      <header className="min-h-[104px]">
         <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[rgb(var(--muted))]">
           {tier.name}
         </p>
@@ -123,27 +124,40 @@ function PricingCard({
         </p>
       </header>
 
-      <div className="mt-5 flex items-baseline gap-1">
-        <span className="text-4xl font-extrabold tracking-tight tabular-nums text-[rgb(var(--foreground))]">
-          ${price}
-        </span>
-        <span className="text-sm text-[rgb(var(--muted))]">
-          {isFree ? "forever" : "/mo"}
-        </span>
+      <div className="mt-5 min-h-[86px]">
+        <div className="flex items-baseline gap-1">
+          <span className="text-4xl font-extrabold tracking-tight tabular-nums text-[rgb(var(--foreground))]">
+            ${price}
+          </span>
+          <span className="text-sm text-[rgb(var(--muted))]">
+            {isFree ? "forever" : "/mo"}
+          </span>
+        </div>
+        <p
+          className={`mt-1 text-[11px] text-[rgb(var(--muted))] ${
+            isFree ? "invisible" : ""
+          }`}
+        >
+          {billing === "annual"
+            ? `billed $${getAnnualPrice(tier)} yearly · 2 months free`
+            : "billed monthly · cancel anytime"}
+        </p>
       </div>
-      {!isFree && billing === "annual" && (
-        <p className="mt-1 text-[11px] text-[rgb(var(--muted))]">
-          billed ${getAnnualPrice(tier)} yearly · 2 months free
+
+      <div
+        className={`mt-5 flex min-h-[108px] items-center rounded-xl border px-4 py-4 ${
+          isHighlight
+            ? "border-[rgb(var(--accent)/0.28)] bg-[rgb(var(--accent)/0.06)]"
+            : "border-[rgb(var(--border))] bg-[rgb(var(--surface-2))]"
+        }`}
+      >
+        <p className="text-[1.05rem] font-semibold leading-snug text-[rgb(var(--foreground))]">
+          {featuredFeature}
         </p>
-      )}
-      {!isFree && billing === "monthly" && (
-        <p className="mt-1 text-[11px] text-[rgb(var(--muted))]">
-          billed monthly · cancel anytime
-        </p>
-      )}
+      </div>
 
       <ul className="mt-5 flex-1 space-y-2.5">
-        {tier.features.map((feature) => (
+        {secondaryFeatures.map((feature) => (
           <li
             key={feature}
             className="flex items-start gap-2 text-sm leading-relaxed text-[rgb(var(--foreground))]"

@@ -10,6 +10,7 @@ import { formatDurationHuman } from "@/lib/format-quiz-clock";
 import type { League } from "@/lib/leagues";
 import { getTopicColors } from "@/lib/topic-colors";
 import type { TopicWithCount } from "@/lib/topics";
+import { TIER_IDS, getTier, type TierId } from "@/lib/tiers";
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
@@ -37,6 +38,7 @@ type Props = {
   user: ProfileUser;
   stats: ProfileStats;
   league: League;
+  subscriptionTier: TierId;
   topics: TopicWithCount[];
   selectedTopicIds: string[];
 };
@@ -110,9 +112,50 @@ function SparkIcon() {
   );
 }
 
+function upgradeRecommendationForTier(tierId: TierId) {
+  switch (tierId) {
+    case "free":
+      return {
+        why: "Best for creating quizzes from your own notes without paying for more than you need yet.",
+        highlights: [
+          "Custom quizzes from your own content",
+          "50 pre-made quizzes across 25 topics",
+          "3 custom quizzes per day",
+        ],
+      };
+    case "builder":
+      return {
+        why: "Best for unlocking the full quiz library and longer-term progress tracking.",
+        highlights: [
+          "Full pre-made quiz library",
+          "15 custom quizzes per day",
+          "120-day progress chart",
+        ],
+      };
+    case "scholar":
+      return {
+        why: "Best for removing caps and keeping a full year of study history in view.",
+        highlights: [
+          "Unlimited custom quizzes",
+          "1-year progress chart",
+          "Up to 50 questions per quiz",
+        ],
+      };
+    default:
+      return null;
+  }
+}
+
 // ─── main component ───────────────────────────────────────────────────────────
 
-export function ProfileView({ user, stats, league, topics, selectedTopicIds }: Props) {
+export function ProfileView({
+  user,
+  stats,
+  league,
+  subscriptionTier,
+  topics,
+  selectedTopicIds,
+}: Props) {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -142,6 +185,13 @@ export function ProfileView({ user, stats, league, topics, selectedTopicIds }: P
   const [topicsMsg, setTopicsMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const displayName = nickname || name || user.email;
+  const currentTier = getTier(subscriptionTier);
+  const currentTierIndex = TIER_IDS.indexOf(subscriptionTier);
+  const nextTier =
+    currentTierIndex >= 0 && currentTierIndex < TIER_IDS.length - 1
+      ? getTier(TIER_IDS[currentTierIndex + 1])
+      : null;
+  const upgradeRecommendation = upgradeRecommendationForTier(subscriptionTier);
 
   // ── avatar upload ──────────────────────────────────────────────────────────
 
@@ -689,46 +739,67 @@ export function ProfileView({ user, stats, league, topics, selectedTopicIds }: P
               <div>
                 <CardTitle>Subscription</CardTitle>
                 <p className="mt-1 text-xs text-slate-500">
-                  Manage your plan and billing.
+                  Your current plan and what it unlocks.
                 </p>
               </div>
               <span className="shrink-0 rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                Free
+                {currentTier.name}
               </span>
             </div>
 
             <div className="mt-4 space-y-2 text-sm text-slate-600 dark:text-slate-300">
-              <p className="font-medium text-slate-800 dark:text-slate-100">What&apos;s included on Free:</p>
+              <p className="font-medium text-slate-800 dark:text-slate-100">
+                What&apos;s included on {currentTier.name}:
+              </p>
               <ul className="ml-4 list-disc space-y-1 text-sm text-slate-500 dark:text-slate-400">
-                <li>3 quizzes per day</li>
-                <li>Up to 10 questions per quiz</li>
-                <li>7-day progress history</li>
-                <li>All rank tiers</li>
+                {currentTier.features.map((feature, index) => (
+                  <li
+                    key={feature}
+                    className={
+                      index === 0
+                        ? "font-semibold text-slate-800 dark:text-slate-100"
+                        : undefined
+                    }
+                  >
+                    {feature}
+                  </li>
+                ))}
               </ul>
             </div>
 
-            <div className="mt-4 rounded-xl border border-accent/30 bg-accent/[0.05] p-4 dark:border-accent/40 dark:bg-accent/[0.08]">
-              <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-                Memora Pro
-                <span className="ml-2 rounded-full bg-accent/20 px-2 py-0.5 text-xs font-medium text-accent">
-                  Coming soon
-                </span>
-              </p>
-              <ul className="mt-2 ml-4 list-disc space-y-1 text-xs text-slate-500 dark:text-slate-400">
-                <li>10 quizzes per day</li>
-                <li>Up to 50 questions per quiz</li>
-                <li>30-day progress history</li>
-                <li>Deeper session analytics</li>
-                <li>Priority AI generation</li>
-              </ul>
-              <Button
-                type="button"
-                disabled
-                className="mt-4 w-full cursor-not-allowed opacity-60"
-              >
-                Upgrade: coming soon
-              </Button>
-            </div>
+            {nextTier && upgradeRecommendation ? (
+              <div className="mt-4 rounded-xl border border-accent/30 bg-accent/[0.05] p-4 dark:border-accent/40 dark:bg-accent/[0.08]">
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                  Recommended upgrade: {nextTier.name}
+                  <span className="ml-2 rounded-full bg-accent/20 px-2 py-0.5 text-xs font-medium text-accent">
+                    ${nextTier.priceMonthly}/mo
+                  </span>
+                </p>
+                <p className="mt-2 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+                  {upgradeRecommendation.why}
+                </p>
+                <ul className="mt-3 ml-4 list-disc space-y-1 text-xs text-slate-500 dark:text-slate-400">
+                  {upgradeRecommendation.highlights.map((feature) => (
+                    <li key={feature}>{feature}</li>
+                  ))}
+                </ul>
+                <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <Link
+                    href="/pricing"
+                    className="inline-flex flex-1 items-center justify-center rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-[background-color,transform] duration-150 ease-out hover:bg-emerald-600 active:scale-[0.98]"
+                  >
+                    Compare plans
+                  </Link>
+                  <span className="text-center text-[11px] text-slate-500 sm:text-left">
+                    Compare every tier before you decide.
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-4 rounded-xl border border-accent/30 bg-accent/[0.05] p-4 text-sm text-slate-600 dark:border-accent/40 dark:bg-accent/[0.08] dark:text-slate-300">
+                You&apos;re already on the top plan. New features will land here first.
+              </div>
+            )}
           </Card>
 
         </div>

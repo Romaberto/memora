@@ -41,6 +41,10 @@ export type Tier = {
   maxQuestionsPerQuiz: number;
   /** Daily custom-quiz cap. `null` = unlimited. Pre-made quizzes are never capped. */
   dailyQuizLimit: number | null;
+  /** How many pre-made quizzes are unlocked per topic. `null` = full library. */
+  premadeQuizLimitPerTopic: number | null;
+  /** How much progress history the dashboard can chart. */
+  progressHistoryDays: number;
   /** Feature bullets for the pricing card. Ordered; first bullet is the headline. */
   features: string[];
   /** Visual treatment on /pricing. One tier is `highlight`. */
@@ -50,64 +54,76 @@ export type Tier = {
 export const TIERS: Record<TierId, Tier> = {
   free: {
     id: "free",
-    name: "Explorer",
-    tagline: "Start reading. No card needed.",
+    name: "Free",
+    tagline: "Sample every topic for free.",
     priceMonthly: 0,
     canCustomQuiz: false,
     maxQuestionsPerQuiz: 0,
     dailyQuizLimit: 0,
+    premadeQuizLimitPerTopic: 1,
+    progressHistoryDays: 7,
     features: [
-      "Unlimited pre-made quizzes across 25 topics",
-      "Full leaderboard & streaks",
+      "Try every topic with one pre-made quiz",
+      "25 pre-made quizzes total",
       "7-day progress chart",
-      "No custom quizzes",
+      "Leaderboard and streak tracking",
     ],
   },
   builder: {
     id: "builder",
     name: "Builder",
-    tagline: "Turn your notes into a quiz.",
+    tagline: "Turn your own notes into quizzes.",
     priceMonthly: 9,
     canCustomQuiz: true,
     maxQuestionsPerQuiz: 20,
-    dailyQuizLimit: 5,
+    dailyQuizLimit: 3,
+    premadeQuizLimitPerTopic: 2,
+    progressHistoryDays: 30,
     features: [
-      "Everything in Explorer",
       "Custom quizzes from your own content",
-      "Up to 20 questions per quiz",
-      "5 custom quizzes per day",
+      "50 pre-made quizzes across 25 topics",
+      "3 custom quizzes per day",
       "30-day progress chart",
+      "Up to 20 questions per quiz",
+      "2 quizzes unlocked in each topic",
     ],
   },
   scholar: {
     id: "scholar",
     name: "Scholar",
-    tagline: "Study hard, remember harder.",
+    tagline: "Unlock the full study flow.",
     priceMonthly: 14,
     canCustomQuiz: true,
     maxQuestionsPerQuiz: 30,
     dailyQuizLimit: 15,
+    premadeQuizLimitPerTopic: null,
+    progressHistoryDays: 120,
     features: [
-      "Everything in Builder",
-      "Up to 30 questions per quiz",
+      "Full pre-made quiz library",
       "15 custom quizzes per day",
+      "120-day progress chart",
       "Priority quiz generation",
+      "Up to 30 questions per quiz",
+      "Custom quizzes from your own content",
     ],
     highlight: true,
   },
   master: {
     id: "master",
     name: "Master",
-    tagline: "No caps. No limits. Go.",
+    tagline: "Unlimited practice, full-year history.",
     priceMonthly: 24,
     canCustomQuiz: true,
     maxQuestionsPerQuiz: 50,
     dailyQuizLimit: null,
+    premadeQuizLimitPerTopic: null,
+    progressHistoryDays: 365,
     features: [
-      "Everything in Scholar",
-      "Up to 50 questions per quiz",
       "Unlimited custom quizzes",
+      "1-year progress chart",
+      "Up to 50 questions per quiz",
       "Early access to new features",
+      "Everything in Scholar",
     ],
   },
 };
@@ -126,6 +142,14 @@ export function normalizeTierId(raw: string | null | undefined): TierId {
 
 export function getTier(id: string | null | undefined): Tier {
   return TIERS[normalizeTierId(id)];
+}
+
+export function getPremadeQuizLimitForTier(id: string | null | undefined): number | null {
+  return getTier(id).premadeQuizLimitPerTopic;
+}
+
+export function getProgressHistoryDaysForTier(id: string | null | undefined): number {
+  return getTier(id).progressHistoryDays;
 }
 
 /** Question-count options the UI should expose for this tier. */

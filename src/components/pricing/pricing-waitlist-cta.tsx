@@ -42,11 +42,11 @@ export function PricingWaitlistCta({
           </span>
 
           <h3 className="mt-3 text-xl font-bold tracking-tight text-[rgb(var(--foreground))] sm:text-2xl">
-            Get the launch-week discount.
+            Get first access to paid plans.
           </h3>
           <p className="mt-2 max-w-xl text-sm leading-relaxed text-[rgb(var(--muted))]">
             Leave your email and we’ll ping you the moment custom quizzes go
-            live, with a discount only the waitlist gets. One email. No spam.
+            live. One email. No spam.
           </p>
         </div>
 

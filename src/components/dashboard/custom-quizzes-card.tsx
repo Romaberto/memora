@@ -23,9 +23,9 @@ export function CustomQuizzesCard({
 
   const bullets = [
     "Books, podcasts, lectures, your own notes",
-    "Up to 50 questions per quiz",
-    "Unlimited daily generations",
-    "Beat your scores, climb the board",
+    "Builder starts at 3 custom quizzes per day",
+    "Scholar gets 15 per day, Master is unlimited",
+    "Up to 50 questions per quiz on Master",
   ];
 
   return (
@@ -53,7 +53,6 @@ export function CustomQuizzesCard({
             Books, podcasts, lectures, your own notes. Paid plans launch soon,
             starting at{" "}
             <span className="font-semibold text-[rgb(var(--foreground))]">$9/mo</span>.
-            The waitlist gets a launch-week discount.
           </p>
 
           <ul className="mt-5 grid gap-2 sm:grid-cols-2">

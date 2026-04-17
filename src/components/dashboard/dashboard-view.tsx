@@ -562,6 +562,10 @@ export function DashboardView({
   leaderboard,
 }: Props) {
   const router = useRouter();
+  const generationLimitLabel =
+    dailyQuizLimit > 0
+      ? `${dailyQuizLimit} custom quizzes per day.`
+      : "Unlimited custom quizzes.";
 
   // form state
   const [title, setTitle] = useState("");
@@ -816,7 +820,7 @@ export function DashboardView({
                 Drop in something new to remember →
               </p>
               <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                Unlimited generations.
+                {generationLimitLabel}
               </p>
             </div>
             <span className="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl bg-accent px-4 text-sm font-semibold text-white shadow-sm transition-transform duration-150 ease-out group-hover:bg-emerald-600 group-active:scale-[0.97]">

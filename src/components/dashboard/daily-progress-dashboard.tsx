@@ -5,118 +5,280 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Card, CardTitle } from "@/components/ui/card";
 import {
+  type ProgressGranularity,
   type SessionForDaily,
-  buildDayBuckets,
-  bestDayInPeriod,
-  dayKeyShortLabel,
-  lastNDayKeys,
+  bestBucketInPeriod,
+  buildProgressBuckets,
+  daysToGranularity,
+  formatLocalYMD,
+  maxScoreInBuckets,
   periodTotals,
+  scrollHintText,
 } from "@/lib/daily-progress";
 
-const FREE_DAYS = 7;
-const PRO_DAYS = 30;
-
-/**
- * The 30-day chart is a cheap perk: any paid tier gets it, free tier stays
- * on the 7-day view. We accept all four tier ids and treat anything other
- * than `"free"` as paid.
- */
 type Tier = "free" | "builder" | "scholar" | "master";
+type GranularityMode = "auto" | ProgressGranularity;
 
 type Props = {
   sessions: SessionForDaily[];
   subscriptionTier: Tier;
 };
 
-function LockIcon({ className }: { className?: string }) {
+type RangeOption = {
+  days: number;
+  label: string;
+};
+
+const RANGE_OPTIONS: Record<Tier, RangeOption[]> = {
+  free: [{ days: 7, label: "7d" }],
+  builder: [
+    { days: 7, label: "7d" },
+    { days: 30, label: "30d" },
+  ],
+  scholar: [
+    { days: 7, label: "7d" },
+    { days: 30, label: "30d" },
+    { days: 120, label: "120d" },
+  ],
+  master: [
+    { days: 7, label: "7d" },
+    { days: 30, label: "30d" },
+    { days: 120, label: "120d" },
+    { days: 365, label: "1y" },
+  ],
+};
+
+function getDefaultRangeDays(ranges: RangeOption[]) {
+  return ranges.find((range) => range.days === 30)?.days ?? ranges[0]!.days;
+}
+
+function startOfDay(date: Date) {
+  const copy = new Date(date);
+  copy.setHours(0, 0, 0, 0);
+  return copy;
+}
+
+function lastNDaysStart(days: number, endDate: Date) {
+  const start = new Date(endDate);
+  start.setDate(start.getDate() - (days - 1));
+  start.setHours(0, 0, 0, 0);
+  return start;
+}
+
+function inclusiveDayCount(startDate: Date, endDate: Date) {
+  const msPerDay = 24 * 60 * 60 * 1000;
   return (
-    <svg
-      className={className}
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      aria-hidden
-    >
-      <rect x="5" y="11" width="14" height="10" rx="2" />
-      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-    </svg>
+    Math.floor((startOfDay(endDate).getTime() - startOfDay(startDate).getTime()) / msPerDay) +
+    1
   );
 }
 
+function parseDateInput(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  if (!year || !month || !day) return null;
+  const parsed = new Date(year, month - 1, day);
+  if (Number.isNaN(parsed.getTime())) return null;
+  parsed.setHours(0, 0, 0, 0);
+  return parsed;
+}
+
+function formatRangeSummary(startDate: Date, endDate: Date) {
+  const sameYear = startDate.getFullYear() === endDate.getFullYear();
+  const sameMonth = sameYear && startDate.getMonth() === endDate.getMonth();
+  const startMonth = startDate.toLocaleString("en-US", { month: "short" });
+  const endMonth = endDate.toLocaleString("en-US", { month: "short" });
+
+  if (sameMonth) {
+    return `${startMonth} ${startDate.getDate()}-${endDate.getDate()}, ${endDate.getFullYear()}`;
+  }
+  if (sameYear) {
+    return `${startMonth} ${startDate.getDate()} - ${endMonth} ${endDate.getDate()}, ${endDate.getFullYear()}`;
+  }
+  return `${startMonth} ${startDate.getDate()}, ${startDate.getFullYear()} - ${endMonth} ${endDate.getDate()}, ${endDate.getFullYear()}`;
+}
+
+function chartHeadingForGranularity(granularity: ProgressGranularity) {
+  if (granularity === "month") return "Monthly score (points)";
+  if (granularity === "week") return "Weekly score (points)";
+  return "Daily score (points)";
+}
+
+function chartCaptionForSelection(
+  rangeDays: number,
+  granularity: ProgressGranularity,
+  usesPreset: boolean,
+) {
+  const scope =
+    rangeDays >= 365 ? "year" : rangeDays === 1 ? "selected day" : `${rangeDays}-day range`;
+  const cadence =
+    granularity === "month"
+      ? "month"
+      : granularity === "week"
+        ? "week"
+        : "day";
+  return usesPreset
+    ? `Quick range selected. This view groups results by ${cadence}.`
+    : `Custom ${scope}. This view groups results by ${cadence}.`;
+}
+
+function bucketWidthClass(granularity: ProgressGranularity) {
+  if (granularity === "month") return "min-w-[4.25rem]";
+  if (granularity === "week") return "min-w-[3.75rem]";
+  return "min-w-[2.75rem]";
+}
+
+function getAllowedGranularities(rangeDays: number): ProgressGranularity[] {
+  if (rangeDays <= 31) return ["day", "week"];
+  if (rangeDays <= 180) return ["day", "week", "month"];
+  return ["week", "month"];
+}
+
 export function DailyProgressDashboard({ sessions, subscriptionTier }: Props) {
-  const [rangeDays, setRangeDays] = useState<number>(FREE_DAYS);
-  const [selectedYmd, setSelectedYmd] = useState<string | null>(null);
+  const availableRanges = RANGE_OPTIONS[subscriptionTier];
+  const defaultRange = getDefaultRangeDays(availableRanges);
+  const today = useMemo(() => startOfDay(new Date()), []);
+  const maxHistoryDays = availableRanges[availableRanges.length - 1]!.days;
+  const earliestDate = useMemo(
+    () => lastNDaysStart(maxHistoryDays, today),
+    [maxHistoryDays, today],
+  );
 
-  const isPaid = subscriptionTier !== "free";
-  const maxRange = isPaid ? PRO_DAYS : FREE_DAYS;
-  const effectiveDays = Math.min(rangeDays, maxRange);
-  const rangeLockedToSeven = subscriptionTier === "free";
+  const initialStart = useMemo(
+    () => lastNDaysStart(defaultRange, today),
+    [defaultRange, today],
+  );
 
-  const dayKeys = useMemo(() => lastNDayKeys(effectiveDays), [effectiveDays]);
+  const [selectedPresetDays, setSelectedPresetDays] = useState<number | null>(defaultRange);
+  const [rangeStart, setRangeStart] = useState<Date>(initialStart);
+  const [rangeEnd, setRangeEnd] = useState<Date>(today);
+  const [draftStart, setDraftStart] = useState(formatLocalYMD(initialStart));
+  const [draftEnd, setDraftEnd] = useState(formatLocalYMD(today));
+  const [granularityMode, setGranularityMode] = useState<GranularityMode>("auto");
+  const [dateError, setDateError] = useState<string | null>(null);
+  const [selectedBucketKey, setSelectedBucketKey] = useState<string | null>(null);
+
+  const rangeDays = useMemo(
+    () => inclusiveDayCount(rangeStart, rangeEnd),
+    [rangeEnd, rangeStart],
+  );
+  const allowedGranularities = useMemo(
+    () => getAllowedGranularities(rangeDays),
+    [rangeDays],
+  );
+  const autoGranularity = useMemo(
+    () => daysToGranularity(rangeDays),
+    [rangeDays],
+  );
+
+  useEffect(() => {
+    if (
+      granularityMode !== "auto" &&
+      !allowedGranularities.includes(granularityMode)
+    ) {
+      setGranularityMode("auto");
+    }
+  }, [allowedGranularities, granularityMode]);
+
+  const effectiveGranularity =
+    granularityMode === "auto" ? autoGranularity : granularityMode;
 
   const buckets = useMemo(
-    () => buildDayBuckets(sessions, dayKeys),
-    [sessions, dayKeys],
+    () =>
+      buildProgressBuckets(sessions, {
+        startDate: rangeStart,
+        endDate: rangeEnd,
+        granularity: effectiveGranularity,
+      }),
+    [effectiveGranularity, rangeEnd, rangeStart, sessions],
+  );
+  const totals = useMemo(() => periodTotals(buckets), [buckets]);
+  const maxBarScore = useMemo(() => maxScoreInBuckets(buckets), [buckets]);
+  const best = useMemo(() => bestBucketInPeriod(buckets), [buckets]);
+  const activeBucket = useMemo(
+    () => buckets.find((bucket) => bucket.key === selectedBucketKey) ?? null,
+    [buckets, selectedBucketKey],
   );
 
-  const totals = useMemo(
-    () => periodTotals(dayKeys, buckets),
-    [dayKeys, buckets],
-  );
-
-  const maxBarScore = useMemo(() => {
-    let m = 1;
-    for (const k of dayKeys) {
-      const s = buckets.get(k)?.totalScore ?? 0;
-      if (s > m) m = s;
-    }
-    return m;
-  }, [dayKeys, buckets]);
-
-  const best = useMemo(
-    () => bestDayInPeriod(dayKeys, buckets),
-    [dayKeys, buckets],
-  );
-
-  const activeBucket = selectedYmd ? buckets.get(selectedYmd) : null;
-
-  // Auto-scroll the chart to the right (most recent days) on load or range change
   const chartRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
   const updateScrollState = useCallback(() => {
-    const el = chartRef.current;
-    if (!el) return;
-    setCanScrollLeft(el.scrollLeft > 4);
-    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+    const element = chartRef.current;
+    if (!element) return;
+    setCanScrollLeft(element.scrollLeft > 4);
+    setCanScrollRight(
+      element.scrollLeft + element.clientWidth < element.scrollWidth - 4,
+    );
   }, []);
 
   useEffect(() => {
-    const el = chartRef.current;
-    if (el) {
-      requestAnimationFrame(() => {
-        el.scrollLeft = el.scrollWidth;
-        updateScrollState();
-      });
+    const element = chartRef.current;
+    if (!element) return;
+    requestAnimationFrame(() => {
+      element.scrollLeft = element.scrollWidth;
+      updateScrollState();
+    });
+  }, [buckets.length, updateScrollState]);
+
+  function applyPreset(days: number) {
+    const presetStart = lastNDaysStart(days, today);
+    setSelectedPresetDays(days);
+    setRangeStart(presetStart);
+    setRangeEnd(today);
+    setDraftStart(formatLocalYMD(presetStart));
+    setDraftEnd(formatLocalYMD(today));
+    setDateError(null);
+    setSelectedBucketKey(null);
+  }
+
+  function applyCustomRange() {
+    const parsedStart = parseDateInput(draftStart);
+    const parsedEnd = parseDateInput(draftEnd);
+
+    if (!parsedStart || !parsedEnd) {
+      setDateError("Choose a valid start and end date.");
+      return;
     }
-  }, [effectiveDays, updateScrollState]);
+    if (parsedStart.getTime() < earliestDate.getTime()) {
+      setDateError(`This plan supports up to ${maxHistoryDays} days of history.`);
+      return;
+    }
+    if (parsedEnd.getTime() > today.getTime()) {
+      setDateError("You can’t look ahead of today.");
+      return;
+    }
+    if (parsedStart.getTime() > parsedEnd.getTime()) {
+      setDateError("Start date must be before end date.");
+      return;
+    }
+
+    const matchingPreset = availableRanges.find((range) => {
+      return (
+        parsedEnd.getTime() === today.getTime() &&
+        inclusiveDayCount(parsedStart, parsedEnd) === range.days
+      );
+    });
+
+    setSelectedPresetDays(matchingPreset?.days ?? null);
+    setRangeStart(parsedStart);
+    setRangeEnd(parsedEnd);
+    setDateError(null);
+    setSelectedBucketKey(null);
+  }
 
   return (
     <Card>
       <div>
-        <CardTitle>Daily progress</CardTitle>
+        <CardTitle>Progress</CardTitle>
         <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-          Track points and accuracy by day. Tap a day for details.
+          Track points and accuracy over time. Use quick presets when you want
+          speed, then switch to custom dates and a finer cadence when you want
+          to inspect a stretch closely.
         </p>
       </div>
 
-      {/* Period achievements — hero layout: Period points elevated */}
       <div className="mt-4 grid gap-3 sm:grid-cols-[1.6fr_1fr_1fr]">
-        {/* Hero: Period points */}
         <div className="rounded-2xl border border-accent/30 bg-gradient-to-br from-accent/10 via-accent/[0.04] to-transparent px-4 py-3 dark:border-accent/40 dark:from-accent/[0.18]">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-accent">
             Period points
@@ -129,138 +291,199 @@ export function DailyProgressDashboard({ sessions, subscriptionTier }: Props) {
               <span className="mr-1" aria-hidden>
                 👑
               </span>
-              Best day{" "}
+              Best period{" "}
               <span className="font-semibold text-slate-700 dark:text-slate-200">
-                {dayKeyShortLabel(best.key)}
+                {best.label}
               </span>{" "}
               · {best.totalScore} pts
             </p>
           ) : null}
         </div>
 
-        {/* Supporting: Quizzes */}
-        <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-800/40">
+        <div className="rounded-xl border border-slate-200/80 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/40">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-            Quizzes
+            Quizzes played
           </p>
-          <p className="mt-1 text-2xl font-extrabold tabular-nums leading-none">
+          <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900 dark:text-white">
             {totals.sessionCount}
+          </p>
+          <p className="mt-1 text-[11px] text-slate-500">
+            {formatRangeSummary(rangeStart, rangeEnd)}
           </p>
         </div>
 
-        {/* Supporting: Avg score */}
-        <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-800/40">
+        <div className="rounded-xl border border-slate-200/80 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/40">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-            Avg score
+            Avg accuracy
           </p>
-          <p className="mt-1 text-2xl font-extrabold tabular-nums leading-none">
+          <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900 dark:text-white">
             {totals.avgPercentage != null
               ? `${Math.round(totals.avgPercentage)}%`
               : "–"}
           </p>
+          <p className="mt-1 text-[11px] text-slate-500">
+            across the selected range
+          </p>
         </div>
       </div>
 
-      {/* Bar chart + day filters */}
-      <div className="mt-5">
-        <div className="mb-2 flex items-center justify-between">
-          <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-            Daily score (points)
-          </p>
-          <div className="flex items-center gap-2">
-            {maxBarScore > 1 && totals.sessionCount > 0 ? (
-              <p className="text-[10px] font-medium tabular-nums text-slate-400">
-                Max {maxBarScore}
-              </p>
-            ) : null}
-            {/* 7/30 day range selector — placed near the chart */}
-            <div
-              className={`flex gap-0.5 rounded-lg p-0.5 ${
-                isPaid
-                  ? "border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900/60"
-                  : "border border-slate-200 bg-slate-50/90 dark:border-slate-700 dark:bg-slate-900/50"
-              }`}
-              role="group"
-              aria-label="Date range"
-            >
+      <div className="mt-5 rounded-2xl border border-slate-200/80 bg-white p-4 dark:border-slate-700 dark:bg-slate-900/20">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+          <div>
+            <p className="text-xs font-semibold text-slate-900 dark:text-white">
+              {chartHeadingForGranularity(effectiveGranularity)}
+            </p>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              {chartCaptionForSelection(
+                rangeDays,
+                effectiveGranularity,
+                selectedPresetDays != null,
+              )}
+            </p>
+            <p className="mt-1 text-[11px] text-slate-400">
+              {selectedPresetDays != null
+                ? `Preset: last ${selectedPresetDays} days`
+                : `Custom range · ${formatRangeSummary(rangeStart, rangeEnd)}`}
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex flex-wrap gap-2">
+              <div
+                className="inline-flex w-fit gap-0.5 rounded-lg border border-slate-200 bg-slate-50 p-0.5 dark:border-slate-700 dark:bg-slate-900/60"
+                role="group"
+                aria-label="Date range presets"
+              >
+                {availableRanges.map((range) => (
+                  <button
+                    key={range.days}
+                    type="button"
+                    onClick={() => applyPreset(range.days)}
+                    className={`rounded-md px-2.5 py-1 text-[11px] font-semibold transition-[color,background-color,box-shadow] duration-150 ease-out active:scale-[0.97] ${
+                      selectedPresetDays === range.days
+                        ? "bg-white text-accent shadow-sm dark:bg-slate-800 dark:text-accent"
+                        : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+                    }`}
+                  >
+                    {range.label}
+                  </button>
+                ))}
+              </div>
+
+              <div
+                className="inline-flex w-fit gap-0.5 rounded-lg border border-slate-200 bg-slate-50 p-0.5 dark:border-slate-700 dark:bg-slate-900/60"
+                role="group"
+                aria-label="Chart granularity"
+              >
+                {(["auto", ...allowedGranularities] as GranularityMode[]).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => setGranularityMode(mode)}
+                    className={`rounded-md px-2.5 py-1 text-[11px] font-semibold capitalize transition-[color,background-color,box-shadow] duration-150 ease-out active:scale-[0.97] ${
+                      granularityMode === mode
+                        ? "bg-white text-accent shadow-sm dark:bg-slate-800 dark:text-accent"
+                        : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+                    }`}
+                  >
+                    {mode === "auto" ? "Auto" : mode}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-end gap-2">
+              <label className="flex flex-col gap-1">
+                <span className="text-[11px] font-medium text-slate-500">
+                  From
+                </span>
+                <input
+                  type="date"
+                  min={formatLocalYMD(earliestDate)}
+                  max={formatLocalYMD(today)}
+                  value={draftStart}
+                  onChange={(event) => setDraftStart(event.target.value)}
+                  className="h-9 rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-900 outline-none ring-accent/20 transition-[border-color,box-shadow] duration-150 ease-out focus:border-accent focus:ring-2 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                />
+              </label>
+
+              <label className="flex flex-col gap-1">
+                <span className="text-[11px] font-medium text-slate-500">
+                  To
+                </span>
+                <input
+                  type="date"
+                  min={formatLocalYMD(earliestDate)}
+                  max={formatLocalYMD(today)}
+                  value={draftEnd}
+                  onChange={(event) => setDraftEnd(event.target.value)}
+                  className="h-9 rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-900 outline-none ring-accent/20 transition-[border-color,box-shadow] duration-150 ease-out focus:border-accent focus:ring-2 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                />
+              </label>
+
               <button
                 type="button"
-                onClick={() => {
-                  setRangeDays(FREE_DAYS);
-                  setSelectedYmd(null);
-                }}
-                className={`rounded-md px-2 py-1 text-[11px] font-semibold transition-[color,background-color,box-shadow] duration-150 ease-out active:scale-[0.97] ${
-                  rangeDays === FREE_DAYS || rangeLockedToSeven
-                    ? "bg-white text-accent shadow-sm dark:bg-slate-800 dark:text-accent"
-                    : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
-                }`}
+                onClick={applyCustomRange}
+                className="inline-flex h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition-[background-color,transform] duration-150 ease-out hover:bg-slate-50 active:scale-[0.98] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
               >
-                7d
+                Apply range
               </button>
-              {isPaid ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setRangeDays(PRO_DAYS);
-                    setSelectedYmd(null);
-                  }}
-                  className={`rounded-md px-2 py-1 text-[11px] font-semibold transition-[color,background-color,box-shadow] duration-150 ease-out active:scale-[0.97] ${
-                    rangeDays === PRO_DAYS
-                      ? "bg-white text-accent shadow-sm dark:bg-slate-800 dark:text-accent"
-                      : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
-                  }`}
-                >
-                  30d
-                </button>
-              ) : (
-                <span
-                  className="inline-flex items-center gap-0.5 rounded-md px-2 py-1 text-[11px] font-medium text-slate-400 dark:text-slate-500"
-                  title="Unlocked on any paid plan"
-                >
-                  <LockIcon className="h-3 w-3" />
-                  30d
-                </span>
-              )}
             </div>
+
+            {dateError ? (
+              <p className="text-[11px] font-medium text-rose-600 dark:text-rose-400">
+                {dateError}
+              </p>
+            ) : null}
           </div>
         </div>
 
-        {/* Chart region — bars overlaid on subtle gridlines */}
-        <div className="relative">
-          {/* Gridlines (25 / 50 / 75 / 100% of max) */}
-          <div className="pointer-events-none absolute inset-x-0 bottom-[18px] top-[14px] flex flex-col-reverse justify-between" aria-hidden>
-            {[0, 0.25, 0.5, 0.75, 1].map((t) => (
+        <div className="relative mt-4">
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-[18px] top-[14px] flex flex-col-reverse justify-between"
+            aria-hidden
+          >
+            {[0, 0.25, 0.5, 0.75, 1].map((tick) => (
               <div
-                key={t}
+                key={tick}
                 className="h-px w-full bg-slate-200/70 dark:bg-slate-700/60"
               />
             ))}
           </div>
 
-          {/* Scroll affordance fades */}
           {canScrollLeft && (
-            <div className="pointer-events-none absolute bottom-0 left-0 top-0 z-10 w-8 bg-gradient-to-r from-white to-transparent dark:from-slate-900" aria-hidden />
+            <div
+              className="pointer-events-none absolute bottom-0 left-0 top-0 z-10 w-8 bg-gradient-to-r from-white to-transparent dark:from-slate-900"
+              aria-hidden
+            />
           )}
           {canScrollRight && (
-            <div className="pointer-events-none absolute bottom-0 right-0 top-0 z-10 w-8 bg-gradient-to-l from-white to-transparent dark:from-slate-900" aria-hidden />
+            <div
+              className="pointer-events-none absolute bottom-0 right-0 top-0 z-10 w-8 bg-gradient-to-l from-white to-transparent dark:from-slate-900"
+              aria-hidden
+            />
           )}
 
-          <div ref={chartRef} onScroll={updateScrollState} className="relative flex gap-1.5 overflow-x-auto pb-2 pt-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {dayKeys.map((key) => {
-              const b = buckets.get(key)!;
-              const h = Math.round((b.totalScore / maxBarScore) * 100);
-              const isSelected = selectedYmd === key;
-              const isToday = key === dayKeys[dayKeys.length - 1];
+          <div
+            ref={chartRef}
+            onScroll={updateScrollState}
+            className="relative flex gap-1.5 overflow-x-auto pb-2 pt-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {buckets.map((bucket) => {
+              const height = Math.round((bucket.totalScore / maxBarScore) * 100);
+              const isSelected = selectedBucketKey === bucket.key;
               const isBest =
-                !!best && best.key === key && b.totalScore > 0;
+                !!best && best.key === bucket.key && bucket.totalScore > 0;
               return (
                 <button
-                  key={key}
+                  key={bucket.key}
                   type="button"
                   onClick={() =>
-                    setSelectedYmd((prev) => (prev === key ? null : key))
+                    setSelectedBucketKey((current) =>
+                      current === bucket.key ? null : bucket.key,
+                    )
                   }
-                  className={`relative flex min-w-[2.75rem] flex-none flex-col items-center gap-1.5 rounded-xl border px-1 py-2 transition-[border-color,background-color,box-shadow] duration-150 ease-out active:scale-[0.97] ${
+                  className={`relative flex ${bucketWidthClass(effectiveGranularity)} flex-none flex-col items-center gap-1.5 rounded-xl border px-1 py-2 transition-[border-color,background-color,box-shadow] duration-150 ease-out active:scale-[0.97] ${
                     isSelected
                       ? "border-accent bg-accent/10 ring-2 ring-accent/30"
                       : isBest
@@ -268,7 +491,7 @@ export function DailyProgressDashboard({ sessions, subscriptionTier }: Props) {
                         : "border-transparent bg-slate-100/60 hover:border-slate-200 dark:bg-slate-800/40 dark:hover:border-slate-600"
                   }`}
                   aria-pressed={isSelected}
-                  aria-label={`${dayKeyShortLabel(key)}${isToday ? ", today" : ""}${isBest ? ", best day" : ""}, ${b.count} quizzes, ${b.totalScore} points`}
+                  aria-label={`${bucket.ariaLabel}${bucket.isCurrent ? ", current period" : ""}${isBest ? ", best period" : ""}, ${bucket.count} quizzes, ${bucket.totalScore} points`}
                 >
                   {isBest && (
                     <span
@@ -279,22 +502,24 @@ export function DailyProgressDashboard({ sessions, subscriptionTier }: Props) {
                     </span>
                   )}
                   <span className="text-[10px] font-medium leading-none text-slate-500 dark:text-slate-400">
-                    {dayKeyShortLabel(key)}
+                    {bucket.label}
                   </span>
                   <div className="flex h-24 w-full items-end justify-center px-0.5">
                     <motion.div
-                      className={`w-full max-w-[2rem] rounded-t-md ${
+                      className={`w-full max-w-[2.4rem] rounded-t-md ${
                         isBest
                           ? "bg-gradient-to-t from-amber-500 to-amber-400 dark:from-amber-500 dark:to-amber-300"
                           : "bg-accent/85 dark:bg-accent"
                       }`}
                       initial={false}
-                      animate={{ height: `${Math.max(h, b.count > 0 ? 8 : 4)}%` }}
+                      animate={{
+                        height: `${Math.max(height, bucket.count > 0 ? 8 : 4)}%`,
+                      }}
                       transition={{ type: "spring", stiffness: 200, damping: 22 }}
                     />
                   </div>
                   <span className="text-[10px] font-semibold tabular-nums text-slate-700 dark:text-slate-200">
-                    {b.totalScore || "–"}
+                    {bucket.totalScore || "–"}
                   </span>
                 </button>
               );
@@ -303,41 +528,42 @@ export function DailyProgressDashboard({ sessions, subscriptionTier }: Props) {
         </div>
       </div>
 
-      {/* Selected day detail */}
       {activeBucket ? (
         <div
           className="mt-4 rounded-xl border border-slate-200 bg-slate-50/90 p-4 dark:border-slate-700 dark:bg-slate-800/50"
           role="region"
-          aria-label={`Sessions on ${selectedYmd}`}
+          aria-label={`Sessions in ${activeBucket.ariaLabel}`}
         >
           <p className="text-sm font-semibold text-slate-900 dark:text-white">
-            {dayKeyShortLabel(selectedYmd!)}
+            {activeBucket.ariaLabel}
             <span className="ml-2 font-normal text-slate-500">
-              · {activeBucket.count} quiz{activeBucket.count !== 1 ? "zes" : ""}{" "}
-              · {activeBucket.totalScore} pts
+              · {activeBucket.count} quiz{activeBucket.count !== 1 ? "zes" : ""} ·{" "}
+              {activeBucket.totalScore} pts
               {activeBucket.avgPercentage != null
                 ? ` · ${Math.round(activeBucket.avgPercentage)}%`
                 : ""}
             </span>
           </p>
           {activeBucket.sessions.length === 0 ? (
-            <p className="mt-2 text-sm text-slate-500">No quizzes this day.</p>
+            <p className="mt-2 text-sm text-slate-500">
+              No quizzes in this period.
+            </p>
           ) : (
             <ul className="mt-3 space-y-2">
-              {activeBucket.sessions.map((s) => (
+              {activeBucket.sessions.map((session) => (
                 <li
-                  key={s.id}
+                  key={session.id}
                   className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200/80 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900/40"
                 >
                   <span className="min-w-0 flex-1 font-medium leading-snug">
-                    {s.topic}
+                    {session.topic}
                   </span>
                   <span className="shrink-0 text-xs tabular-nums text-slate-500">
-                    {Math.round(s.percentage)}% · {s.score} pts · {s.questionCount}{" "}
-                    Q
+                    {Math.round(session.percentage)}% · {session.score} pts ·{" "}
+                    {session.questionCount} Q
                   </span>
                   <Link
-                    href={`/dashboard/session/${s.id}`}
+                    href={`/dashboard/session/${session.id}`}
                     className="shrink-0 text-xs font-semibold text-accent underline"
                   >
                     Review
@@ -349,15 +575,14 @@ export function DailyProgressDashboard({ sessions, subscriptionTier }: Props) {
         </div>
       ) : totals.sessionCount === 0 ? (
         <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">
-          Complete a quiz to see your daily scores here. Each bar is total game
-          points earned that calendar day.
+          Complete a quiz to populate this chart. Your history window will fill
+          in automatically as you play.
         </p>
       ) : (
         <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
-          Select a day above to list quizzes from that day.
+          {scrollHintText(effectiveGranularity)}
         </p>
       )}
-
     </Card>
   );
 }

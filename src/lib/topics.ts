@@ -2,6 +2,10 @@
  * Data access layer for pre-made topics and quizzes.
  */
 import prisma from "./db";
+import {
+  getPremadeQuizLimitForTier,
+  type TierId,
+} from "./tiers";
 
 export type TopicWithCount = {
   id: string;
@@ -14,7 +18,17 @@ export type TopicWithCount = {
   quizCount: number;
 };
 
-export async function getTopics(): Promise<TopicWithCount[]> {
+function getPremadeQuizWhereForTier(tierId: TierId) {
+  const limit = getPremadeQuizLimitForTier(tierId);
+  return limit == null ? {} : { quizNumber: { lte: limit } };
+}
+
+function getAccessibleQuizCountForTier(totalQuizCount: number, tierId: TierId) {
+  const limit = getPremadeQuizLimitForTier(tierId);
+  return limit == null ? totalQuizCount : Math.min(totalQuizCount, limit);
+}
+
+export async function getTopics(tierId: TierId = "free"): Promise<TopicWithCount[]> {
   const topics = await prisma.topic.findMany({
     orderBy: { sortOrder: "asc" },
     include: { _count: { select: { premadeQuizzes: true } } },
@@ -27,15 +41,17 @@ export async function getTopics(): Promise<TopicWithCount[]> {
     icon: t.icon,
     color: t.color,
     sortOrder: t.sortOrder,
-    quizCount: t._count.premadeQuizzes,
+    quizCount: getAccessibleQuizCountForTier(t._count.premadeQuizzes, tierId),
   }));
 }
 
-export async function getTopicBySlug(slug: string) {
+export async function getTopicBySlug(slug: string, tierId: TierId = "free") {
   return prisma.topic.findUnique({
     where: { slug },
     include: {
+      _count: { select: { premadeQuizzes: true } },
       premadeQuizzes: {
+        where: getPremadeQuizWhereForTier(tierId),
         orderBy: { quizNumber: "asc" },
         include: {
           quizRequest: {
@@ -108,6 +124,7 @@ export type RecommendedQuiz = {
  */
 export async function getRecommendedQuizzes(
   userId: string,
+  tierId: TierId = "free",
   limit = 6,
 ): Promise<RecommendedQuiz[]> {
   const interests = await prisma.userTopicInterest.findMany({
@@ -120,7 +137,10 @@ export async function getRecommendedQuizzes(
 
   // All premade quizzes in user's interested topics
   const premade = await prisma.premadeQuiz.findMany({
-    where: { topicId: { in: topicIds } },
+    where: {
+      topicId: { in: topicIds },
+      ...getPremadeQuizWhereForTier(tierId),
+    },
     include: {
       topic: { select: { slug: true, name: true, icon: true, color: true } },
       quizRequest: { select: { questionCount: true } },
@@ -169,9 +189,15 @@ export async function getRecommendedQuizzes(
   }));
 }
 
-export async function getPremadeQuizById(premadeQuizId: string) {
-  return prisma.premadeQuiz.findUnique({
-    where: { id: premadeQuizId },
+export async function getPremadeQuizById(
+  premadeQuizId: string,
+  tierId: TierId = "free",
+) {
+  return prisma.premadeQuiz.findFirst({
+    where: {
+      id: premadeQuizId,
+      ...getPremadeQuizWhereForTier(tierId),
+    },
     include: {
       topic: true,
       quizRequest: {

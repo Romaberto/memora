@@ -2,6 +2,7 @@ import { requireUserId } from "@/lib/auth";
 import { findById } from "@/lib/csv-users";
 import { getLeague } from "@/lib/leagues";
 import { getTopics } from "@/lib/topics";
+import { getUserSubscription } from "@/lib/subscription";
 import prisma from "@/lib/db";
 import { ProfileView } from "./profile-view";
 
@@ -32,7 +33,7 @@ export default async function ProfilePage() {
     streakRow,
     paceRows,
     pointsRow,
-    topics,
+    subscriptionTier,
     topicInterests,
   ] = await Promise.all([
     prisma.quizSession.count({ where: sessionWhere }),
@@ -47,12 +48,13 @@ export default async function ProfilePage() {
       take: 1000,
     }),
     prisma.quizSession.aggregate({ where: sessionWhere, _sum: { score: true } }),
-    getTopics(),
+    getUserSubscription(userId),
     prisma.userTopicInterest.findMany({
       where: { userId },
       select: { topicId: true },
     }),
   ]);
+  const topics = await getTopics(subscriptionTier);
 
   const totalPoints = pointsRow._sum.score ?? 0;
   const league = getLeague(totalPoints);
@@ -89,6 +91,7 @@ export default async function ProfilePage() {
         avgSecondsPerQuestion: paceQs > 0 ? paceSeconds / paceQs : null,
       }}
       league={league}
+      subscriptionTier={subscriptionTier}
       topics={topics}
       selectedTopicIds={topicInterests.map((t) => t.topicId)}
     />

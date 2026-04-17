@@ -4,6 +4,7 @@ import { rankFromPercentage } from "@/lib/ranks";
 import { getLeaderboard, findUserRank } from "@/lib/leaderboard";
 import { getUserSubscription, getDailyQuizCount, getDailyLimit } from "@/lib/subscription";
 import { getRecommendedQuizzes } from "@/lib/topics";
+import { getProgressHistoryDaysForTier } from "@/lib/tiers";
 import {
   DashboardView,
   type DashboardRequestRow,
@@ -15,13 +16,16 @@ const nonFallbackRequest = { usedFallback: false } as const;
 export default async function DashboardPage() {
   const userId = await requireUserId();
 
-  const weekAgo      = new Date(Date.now() -  7 * 24 * 60 * 60 * 1000);
-  const progressSince = new Date(Date.now() - 40 * 24 * 60 * 60 * 1000);
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   const sessionHistoryWhere = { userId, quizRequest: nonFallbackRequest };
   const [subscriptionTier, dailyQuizCount] = await Promise.all([
     getUserSubscription(userId),
     getDailyQuizCount(userId),
   ]);
+  const progressHistoryDays = getProgressHistoryDaysForTier(subscriptionTier);
+  const progressSince = new Date(
+    Date.now() - progressHistoryDays * 24 * 60 * 60 * 1000,
+  );
 
   // Fetch all dashboard + leaderboard data in parallel
   const [guest, dashboardData, leaderboardEntries, recommendedQuizzes, waitlistRow] = await Promise.all([
@@ -60,7 +64,7 @@ export default async function DashboardPage() {
 
     getLeaderboard("alltime", 10).catch(() => []),
     // 1 hero + 3 alternates — see RecommendedQuizzes component.
-    getRecommendedQuizzes(userId, 4).catch(() => []),
+    getRecommendedQuizzes(userId, subscriptionTier, 4).catch(() => []),
     // Waitlist status — used to switch the upsell CTA to a persistent
     // "you're on the list" state.
     prisma.waitlistSignup

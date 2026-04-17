@@ -8,7 +8,7 @@ import { PricingWaitlistCta } from "@/components/pricing/pricing-waitlist-cta";
 export const metadata: Metadata = {
   title: "Pricing · Memora",
   description:
-    "Start free with 25 topic libraries. Upgrade to turn your own notes, books, and lectures into custom quizzes.",
+    "Start free with 25 pre-made quizzes, one in each topic. Upgrade for more of the library, custom quizzes, and longer progress history.",
 };
 
 /**
@@ -65,8 +65,9 @@ export default async function PricingPage() {
           <span className="gradient-text">Pick a plan when you’re ready.</span>
         </h1>
         <p className="mt-4 text-base leading-relaxed text-[rgb(var(--muted))]">
-          Free forever to play the pre-made library. Paid plans unlock custom
-          quizzes from your own books, notes, and lectures.
+          Free forever to sample one quiz in every topic. Builder unlocks more
+          of the pre-made library and custom quizzes, while Scholar and Master
+          open the full catalog with longer history.
         </p>
       </header>
 
@@ -98,17 +99,18 @@ export default async function PricingPage() {
             renewing at the end of the year; you keep access until then.
           </FaqItem>
           <FaqItem q="Will the free tier always be free?">
-            Always. All 25 topic libraries with 10 quizzes each, about 250
-            quizzes, stay free with full leaderboard and streak support.
+            Always. Free includes 25 pre-made quizzes total, one in each topic,
+            plus full leaderboard and streak support.
           </FaqItem>
           <FaqItem q="What happens if I downgrade?">
             You keep your history and scores. Custom-quiz generation pauses,
-            but everything you’ve played stays intact and pre-made quizzes
-            remain open.
+            and your access returns to the limits of your new plan, but
+            everything you’ve played stays intact.
           </FaqItem>
-          <FaqItem q="Do you offer student discounts?">
-            Yes. Email us from your .edu address and we’ll send you a code for
-            50% off any paid plan.
+          <FaqItem q="How much of the pre-made library comes with each plan?">
+            Free includes 25 pre-made quizzes, one per topic. Builder includes
+            50 pre-made quizzes, two per topic. Scholar and Master unlock the
+            full pre-made library.
           </FaqItem>
         </div>
       </section>

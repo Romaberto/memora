@@ -48,7 +48,7 @@ const steps = [
 const faqs = [
   {
     q: "Is Memora free?",
-    a: "Yes. You get 3 quizzes per day for free, with up to 10 questions each. That\u2019s plenty for a daily study habit. A Pro plan is coming for power users who want more.",
+    a: "Yes. Free includes 25 pre-made quizzes total, one in each topic. Builder unlocks 50 pre-made quizzes plus custom quizzes, while Scholar and Master unlock the full pre-made library.",
   },
   {
     q: "What kind of material can I paste in?",

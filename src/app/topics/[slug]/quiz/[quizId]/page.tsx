@@ -1,5 +1,6 @@
 import { requireUserId } from "@/lib/auth";
 import { getPremadeQuizById } from "@/lib/topics";
+import { getUserSubscription } from "@/lib/subscription";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { QuizExperience } from "@/components/quiz/quiz-experience";
@@ -11,9 +12,10 @@ type PageProps = {
 
 export default async function PremadeQuizPage({ params }: PageProps) {
   // Auth required to play (scores need a userId)
-  await requireUserId();
+  const userId = await requireUserId();
+  const subscriptionTier = await getUserSubscription(userId);
 
-  const premade = await getPremadeQuizById(params.quizId);
+  const premade = await getPremadeQuizById(params.quizId, subscriptionTier);
   if (!premade || premade.topic.slug !== params.slug) notFound();
 
   const questions = premade.quizRequest.questions.flatMap((row) => {

@@ -1,11 +1,17 @@
 import { getTopics } from "@/lib/topics";
+import { getSessionUserId } from "@/lib/auth";
+import { getUserSubscription } from "@/lib/subscription";
 import { TopicGrid } from "@/components/topics/topic-grid";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
 export default async function TopicsPage() {
-  const topics = await getTopics();
+  const userId = await getSessionUserId();
+  const subscriptionTier = userId
+    ? await getUserSubscription(userId)
+    : "free";
+  const topics = await getTopics(subscriptionTier);
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">

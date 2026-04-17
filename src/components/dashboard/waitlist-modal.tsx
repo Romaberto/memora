@@ -101,8 +101,7 @@ export function WaitlistModal({
               Be first to turn your notes into quizzes
             </h2>
             <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-              Leave your email and we&apos;ll ping you when paid plans launch
-              with a launch-week discount.
+              Leave your email and we&apos;ll ping you when paid plans launch.
             </p>
           </div>
           <button
