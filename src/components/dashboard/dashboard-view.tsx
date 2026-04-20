@@ -65,58 +65,72 @@ function PlusIcon() {
   );
 }
 
-// ─── editorial stats line ───────────────────────────────────────────────────
-//
-// The editorial direction replaces the four-pill stat row with a single
-// sentence-shaped readout. Same information, zero SaaS-dashboard energy.
-// Small per-number tooltips via <Link> to /leaderboard keep it actionable.
+// ─── dashboard status summary ───────────────────────────────────────────────
 
-function EditorialStats({
+function StatusMetric({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="min-w-0 rounded-lg bg-[rgb(var(--surface-2))] px-3 py-2">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[rgb(var(--muted))]">
+        {label}
+      </p>
+      <p className="mt-1 text-lg font-bold leading-none tabular-nums text-[rgb(var(--foreground))]">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function DashboardStatusSummary({
   league,
   avgPercentage,
   totalSessions,
   sessionsLast7Days,
+  userRank,
 }: {
   league: League;
   avgPercentage: number | null;
   totalSessions: number;
   sessionsLast7Days: number;
+  userRank: number;
 }) {
-  const avgLine =
-    avgPercentage != null ? `${Math.round(avgPercentage)}% avg` : null;
-  const countLine = `${totalSessions} ${
-    totalSessions === 1 ? "quiz" : "quizzes"
-  }`;
-  const weekLine =
-    sessionsLast7Days > 0 ? `${sessionsLast7Days} this week` : null;
-
-  // Stats are split across two lines instead of being joined with an
-  // em-dash on a single oversized line. The league name stays editorial
-  // (big, league-colored); the numbers drop to metadata weight beneath.
-  // Fixes two things at once: (1) the welcome-header H1 no longer fights
-  // a same-size stats line on narrow viewports, (2) no long dash needed
-  // as a separator. Right-aligned on sm+, left-aligned on mobile where
-  // the block stacks under the welcome copy.
-  const statsLine = [avgLine, countLine, weekLine].filter(Boolean).join(" · ");
-
   return (
-    <Link
-      href="/leaderboard"
-      aria-label="View your rank"
-      className="group sm:text-right"
+    <section
+      aria-label="Your learning status"
+      className="rounded-xl border border-[rgb(var(--border))] bg-white p-4 shadow-[0_1px_2px_rgba(26,26,32,0.04)] sm:min-w-[360px]"
     >
-      <p
-        className={`font-editorial text-2xl leading-tight sm:text-3xl ${league.color}`}
-      >
-        {league.name}
-      </p>
-      <p className="mt-1 text-sm tabular-nums text-[rgb(var(--muted))]">
-        {statsLine}
-      </p>
-      <p className="mt-1 text-xs text-[rgb(var(--muted))] underline decoration-[rgb(26_26_32_/_0.15)] underline-offset-4 transition-colors duration-150 ease-[var(--ease-out)] group-hover:text-[rgb(var(--accent))] group-hover:decoration-[rgb(var(--accent))]">
-        View leaderboard
-      </p>
-    </Link>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[rgb(var(--muted))]">
+            Current status
+          </p>
+          <p className={`mt-1 text-2xl font-bold leading-none ${league.color}`}>
+            {league.name}
+          </p>
+        </div>
+        <Link
+          href="/leaderboard"
+          className="inline-flex h-9 items-center justify-center rounded-lg border border-[rgb(var(--border))] bg-white px-3 text-xs font-semibold text-[rgb(var(--foreground))] transition-[background-color,border-color,transform] duration-150 ease-out hover:border-[rgb(var(--accent)/0.28)] hover:bg-[rgb(var(--accent)/0.08)] active:scale-[0.97]"
+        >
+          Leaderboard
+        </Link>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <StatusMetric
+          label="Accuracy"
+          value={avgPercentage != null ? `${Math.round(avgPercentage)}%` : "New"}
+        />
+        <StatusMetric label="Quizzes" value={String(totalSessions)} />
+        <StatusMetric label="Week" value={String(sessionsLast7Days)} />
+        <StatusMetric label="Rank" value={userRank > 0 ? `#${userRank}` : "New"} />
+      </div>
+    </section>
   );
 }
 
@@ -131,14 +145,12 @@ function MiniLeagueBadge({ league }: { league: League }) {
   );
 }
 
-// ─── mini leaderboard (dashboard card) ──────────────────────────────────────
-
-type MiniLeaderboardTab = "global" | "leagues";
+// ─── mini leaderboard (dashboard preview) ───────────────────────────────────
 
 function MiniLeaderboard({ leaderboard }: {
   leaderboard: Props["leaderboard"];
 }) {
-  const [tab, setTab] = useState<MiniLeaderboardTab>("global");
+  const previewEntries = leaderboard.entries.slice(0, 3);
 
   return (
     <Card>
@@ -146,108 +158,58 @@ function MiniLeaderboard({ leaderboard }: {
         <div>
           <CardTitle>Leaderboard</CardTitle>
           <p className="mt-0.5 text-xs text-slate-500">
-            {tab === "global"
-              ? leaderboard.userRank > 0
-                ? `You're ranked ${medalEmoji(leaderboard.userRank)} out of ${leaderboard.totalPlayers} player${leaderboard.totalPlayers !== 1 ? "s" : ""}.`
-                : "Complete a quiz to appear on the board."
-              : "Compete in your league, coming soon!"}
+            {leaderboard.userRank > 0
+              ? `You're ranked ${medalEmoji(leaderboard.userRank)} out of ${leaderboard.totalPlayers} player${leaderboard.totalPlayers !== 1 ? "s" : ""}.`
+              : "Complete a quiz to appear on the board."}
           </p>
         </div>
         <Link
-          href={tab === "leagues" ? "/leaderboard?tab=leagues" : "/leaderboard"}
+          href="/leaderboard"
           className="shrink-0 text-xs font-medium text-accent underline transition-opacity duration-150 ease-out hover:opacity-80"
         >
           Full leaderboard →
         </Link>
       </div>
 
-      {/* Tab switcher */}
-      <div className="mt-3 inline-flex gap-1 rounded-lg border border-slate-200 bg-slate-50 p-0.5 dark:border-slate-700 dark:bg-slate-900/60" role="group">
-        {([
-          { key: "global" as MiniLeaderboardTab, label: "Global" },
-          { key: "leagues" as MiniLeaderboardTab, label: "Leagues" },
-        ]).map(({ key, label }) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setTab(key)}
-            className={`rounded-md px-3 py-1 text-xs font-semibold transition-[color,background-color,box-shadow] duration-150 ease-out ${
-              tab === key
-                ? "bg-white text-accent shadow-sm dark:bg-slate-800 dark:text-accent"
-                : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {/* Global tab */}
-      {tab === "global" && (
-        <>
-          {leaderboard.entries.length === 0 ? (
-            <p className="mt-4 text-sm text-slate-500">
-              No scores yet. Be the first to complete a quiz!
-            </p>
-          ) : (
-            <ul className="mt-3 space-y-2">
-              {leaderboard.entries.slice(0, 5).map((e) => {
-                const league = getLeague(e.totalPoints);
-                const isMe = leaderboard.userRank > 0 && leaderboard.entries[leaderboard.userRank - 1]?.userId === e.userId;
-                return (
-                  <li
-                    key={e.userId}
-                    className={`flex items-center gap-2.5 rounded-xl px-3 py-2 ${
-                      isMe
-                        ? "bg-accent/[0.07] dark:bg-accent/[0.12]"
-                        : "bg-slate-50 dark:bg-slate-800/40"
-                    }`}
-                  >
-                    <span className={`w-7 text-center text-sm font-bold tabular-nums ${e.rank <= 3 ? "text-base" : "text-slate-500"}`}>
-                      {medalEmoji(e.rank)}
+      {leaderboard.entries.length === 0 ? (
+        <p className="mt-4 rounded-xl bg-slate-50 px-4 py-6 text-center text-sm text-slate-500 dark:bg-slate-800/40">
+          No scores yet. Be the first to complete a quiz.
+        </p>
+      ) : (
+        <ul className="mt-4 grid gap-2 md:grid-cols-3">
+          {previewEntries.map((e) => {
+            const league = getLeague(e.totalPoints);
+            const isMe =
+              leaderboard.userRank > 0 &&
+              leaderboard.entries[leaderboard.userRank - 1]?.userId === e.userId;
+            return (
+              <li
+                key={e.userId}
+                className={`flex min-w-0 items-center gap-2.5 rounded-xl px-3 py-2.5 ${
+                  isMe
+                    ? "bg-accent/[0.07] dark:bg-accent/[0.12]"
+                    : "bg-slate-50 dark:bg-slate-800/40"
+                }`}
+              >
+                <span className="w-7 shrink-0 text-center text-sm font-bold tabular-nums text-slate-500">
+                  {medalEmoji(e.rank)}
+                </span>
+                <UserAvatar src={e.avatarUrl || null} name={e.displayName} size="sm" />
+                <div className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold text-slate-900 dark:text-white">
+                    {e.displayName}
+                  </span>
+                  <span className="mt-0.5 flex items-center gap-1.5 text-[10px] text-slate-400">
+                    <MiniLeagueBadge league={league} />
+                    <span className="tabular-nums">
+                      {e.totalPoints.toLocaleString()} pts
                     </span>
-                    <UserAvatar src={e.avatarUrl || null} name={e.displayName} size="sm" />
-                    <div className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium text-slate-900 dark:text-white">
-                        {e.displayName}
-                      </span>
-                      <span className="flex items-center gap-1.5 text-[10px] text-slate-400">
-                        <MiniLeagueBadge league={league} />
-                        <span className="tabular-nums">{e.basePoints.toLocaleString()} + {e.streakPoints.toLocaleString()} streak</span>
-                      </span>
-                    </div>
-                    <span className="shrink-0 text-sm font-bold tabular-nums text-slate-700 dark:text-slate-200">
-                      {e.totalPoints.toLocaleString()}
-                      <span className="ml-0.5 text-xs font-normal text-slate-400"> pts</span>
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </>
-      )}
-
-      {/* Leagues tab — coming soon */}
-      {tab === "leagues" && (
-        <div className="mt-4 rounded-xl border-2 border-dashed border-accent/30 bg-accent/[0.03] px-5 py-8 text-center dark:border-accent/20 dark:bg-accent/[0.05]">
-          <p className="text-3xl">🏟️</p>
-          <p className="mt-2 text-base font-bold text-slate-900 dark:text-white">
-            League Leaderboards
-          </p>
-          <span className="mt-1.5 inline-block rounded-full bg-amber-100 px-3 py-1 text-xs font-bold uppercase tracking-wider text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">
-            Coming Soon
-          </span>
-          <p className="mx-auto mt-3 max-w-xs text-xs text-slate-500">
-            Compete against players in your league with weekly rankings, promotion zones, and rewards.
-          </p>
-          <Link
-            href="/leaderboard?tab=leagues"
-            className="mt-3 inline-block text-xs font-medium text-accent underline"
-          >
-            Preview all leagues →
-          </Link>
-        </div>
+                  </span>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
       )}
     </Card>
   );
@@ -315,13 +277,23 @@ function ActivitySection({
   onPrefill: (r: DashboardRequestRow) => void;
 }) {
   const [tab, setTab] = useState<ActivityTab>("runs");
+  const [expanded, setExpanded] = useState(false);
   const hasRuns = sessions.length > 0;
   const hasTopics = requests.length > 0;
+  const activeCount = tab === "runs" ? sessions.length : requests.length;
+  const visibleSessions = expanded ? sessions : sessions.slice(0, 5);
+  const visibleRequests = expanded ? requests : requests.slice(0, 5);
+  const canExpand = activeCount > 5;
 
   return (
     <Card>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <CardTitle>Activity</CardTitle>
+        <div>
+          <CardTitle>Recent activity</CardTitle>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Latest quiz runs and generated topics.
+          </p>
+        </div>
         {/* Tab switcher */}
         <div className="inline-flex self-start gap-1 rounded-lg border border-slate-200 bg-slate-50 p-0.5 dark:border-slate-700 dark:bg-slate-900/60" role="group">
           {([
@@ -331,7 +303,10 @@ function ActivitySection({
             <button
               key={key}
               type="button"
-              onClick={() => setTab(key)}
+              onClick={() => {
+                setTab(key);
+                setExpanded(false);
+              }}
               className={`rounded-md px-3 py-1 text-xs font-semibold transition-[color,background-color,box-shadow] duration-150 ease-out ${
                 tab === key
                   ? "bg-white text-accent shadow-sm dark:bg-slate-800 dark:text-accent"
@@ -367,7 +342,7 @@ function ActivitySection({
             </p>
           ) : (
             <ul className="space-y-1">
-              {sessions.map((s) => (
+              {visibleSessions.map((s) => (
                 <li key={s.id}>
                   <Link
                     href={`/dashboard/session/${s.id}`}
@@ -420,7 +395,7 @@ function ActivitySection({
             </p>
           ) : (
             <ul className="space-y-1">
-              {requests.map((r) => {
+              {visibleRequests.map((r) => {
                 const isPending = pendingRemovals.has(r.id);
                 return (
                   <li
@@ -482,6 +457,18 @@ function ActivitySection({
               })}
             </ul>
           )}
+        </div>
+      )}
+
+      {canExpand && (
+        <div className="mt-4 flex justify-center border-t border-slate-100 pt-4 dark:border-slate-800">
+          <button
+            type="button"
+            onClick={() => setExpanded((value) => !value)}
+            className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition-[border-color,background-color,transform] duration-150 ease-out hover:border-accent/30 hover:bg-accent/[0.04] hover:text-accent active:scale-[0.98] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+          >
+            {expanded ? "Show less" : `Show all ${activeCount}`}
+          </button>
         </div>
       )}
     </Card>
@@ -750,27 +737,23 @@ export function DashboardView({
         reason={upgradeReason ?? "custom_quiz"}
       />
 
-      {/* ── Greeting + stats — editorial typographic line, not a pill row ─
-          The four-pill LEAGUE/AVG/QUIZZES/WEEK grid was the single loudest
-          "vibecode dashboard" tell. Replacing it with a sentence in the
-          house voice makes the same numbers feel like an observation about
-          the reader, not a KPI dashboard for a B2B SaaS tool. */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="font-editorial-hero text-4xl leading-[1.1] text-[rgb(var(--foreground))] sm:text-5xl">
+      {/* ── Greeting + status summary ──────────────────────────────────── */}
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end lg:justify-between">
+        <div className="max-w-2xl">
+          <h1 className="font-editorial-hero text-4xl leading-[1.08] text-[rgb(var(--foreground))] sm:text-5xl">
             {userName
               ? `Welcome back, ${userName.split(" ")[0]}.`
               : "Welcome back."}
           </h1>
-          <p className="mt-3 max-w-xl text-sm text-[rgb(var(--muted))]">
+          <p className="mt-3 text-base leading-relaxed text-[rgb(var(--muted))]">
             {subscriptionTier === "free"
-              ? "A quiet place to remember what you read. Pick up where you left off below."
-              : "A quiet place to remember what you read. Turn a chapter, a lecture, or a page of notes into questions."}
+              ? "Pick up where you left off below."
+              : "Turn what you read into questions, then keep the streak moving."}
           </p>
         </div>
 
         {stats.totalSessions === 0 ? (
-          <div className="flex max-w-xs items-center gap-3 rounded-xl border border-[rgb(var(--accent)/0.2)] bg-[rgb(var(--accent)/0.06)] px-4 py-3 sm:self-end">
+          <div className="flex items-center gap-3 rounded-xl border border-[rgb(var(--accent)/0.2)] bg-[rgb(var(--accent)/0.06)] px-4 py-3 lg:min-w-[360px] lg:self-end">
             <span
               aria-hidden
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[rgb(var(--accent))] text-base text-white"
@@ -787,247 +770,242 @@ export function DashboardView({
             </div>
           </div>
         ) : (
-          <EditorialStats
+          <DashboardStatusSummary
             league={getLeague(leaderboard.userTotalPoints)}
             avgPercentage={stats.avgPercentage}
             totalSessions={stats.totalSessions}
             sessionsLast7Days={stats.sessionsLast7Days}
+            userRank={leaderboard.userRank}
           />
         )}
       </div>
 
-      {/* ── Picked for you — hero + alternates ─────────────────────────── */}
-      {recommendedQuizzes.length > 0 && (
-        <RecommendedQuizzes quizzes={recommendedQuizzes} />
-      )}
-
-      {/* ── Generate quiz — paid tiers only ────────────────────────────── */}
+      {/* ── Custom quizzes — paid action or free-tier gate ─────────────── */}
       {subscriptionTier !== "free" && (
-      <Card className="border-accent/40 bg-gradient-to-br from-accent/[0.06] via-transparent to-transparent dark:border-accent/50 dark:from-accent/[0.10]">
-        {!formExpanded ? (
-          // ── Collapsed state — returning users: quick-entry trigger ────
-          <button
-            type="button"
-            onClick={() => setFormExpanded(true)}
-            className="group flex w-full items-center justify-between gap-4 rounded-xl px-1 py-3 text-left outline-none transition-[transform] duration-150 ease-out active:scale-[0.99]"
-            aria-expanded={false}
-          >
-            <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-wide text-accent">
-                Generate a quiz
-              </p>
-              <p className="mt-1 text-base font-bold text-[rgb(var(--foreground))] sm:text-lg">
-                Drop in something new to remember →
-              </p>
-              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                {generationLimitLabel}
-              </p>
-            </div>
-            <span className="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl bg-accent px-4 text-sm font-semibold text-white shadow-sm transition-transform duration-150 ease-out group-hover:bg-emerald-600 group-active:scale-[0.97]">
-              <PlusIcon />
-              New quiz
-            </span>
-          </button>
-        ) : (
-          <>
-            {/* Card header — expanded */}
-            <div className="mb-5 flex flex-col gap-0.5 sm:flex-row sm:items-end sm:justify-between">
-              <div>
+        <Card className="border-accent/40 bg-gradient-to-br from-accent/[0.06] via-transparent to-transparent dark:border-accent/50 dark:from-accent/[0.10]">
+          {!formExpanded ? (
+            // ── Collapsed state — returning users: quick-entry trigger ────
+            <button
+              type="button"
+              onClick={() => setFormExpanded(true)}
+              className="group flex w-full items-center justify-between gap-4 rounded-xl px-1 py-3 text-left outline-none transition-[transform] duration-150 ease-out active:scale-[0.99]"
+              aria-expanded={false}
+            >
+              <div className="min-w-0">
                 <p className="text-xs font-semibold uppercase tracking-wide text-accent">
                   Generate a quiz
                 </p>
-                <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
-                  Paste your notes or a summary, we&apos;ll turn them into questions.
+                <p className="mt-1 text-base font-bold text-[rgb(var(--foreground))] sm:text-lg">
+                  Drop in something new to remember →
+                </p>
+                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                  {generationLimitLabel}
                 </p>
               </div>
-              <div className="flex items-center gap-3">
-                {showDebug && (
-                  <label className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+              <span className="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl bg-accent px-4 text-sm font-semibold text-white shadow-sm transition-transform duration-150 ease-out group-hover:bg-emerald-600 group-active:scale-[0.97]">
+                <PlusIcon />
+                New quiz
+              </span>
+            </button>
+          ) : (
+            <>
+              {/* Card header — expanded */}
+              <div className="mb-5 flex flex-col gap-0.5 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-accent">
+                    Generate a quiz
+                  </p>
+                  <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+                    Paste your notes or a summary, we&apos;ll turn them into questions.
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  {showDebug && (
+                    <label className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                      <input
+                        type="checkbox"
+                        checked={debugPrompt}
+                        onChange={(e) => setDebugPrompt(e.target.checked)}
+                      />
+                      Debug prompt
+                    </label>
+                  )}
+                  {!loading && (
+                    <button
+                      type="button"
+                      onClick={() => setFormExpanded(false)}
+                      className="rounded-lg px-2 py-1 text-xs font-medium text-slate-500 underline transition-colors duration-150 ease-out hover:text-slate-700 dark:hover:text-slate-200"
+                      aria-label="Collapse generator"
+                    >
+                      Collapse
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <form className="space-y-4" onSubmit={onGenerate}>
+                {/* Title + question count in one row */}
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                  <div className="flex-1">
+                    <label
+                      htmlFor="title"
+                      className="mb-1 block text-sm font-medium text-slate-800 dark:text-slate-100"
+                    >
+                      Book / article / topic title
+                    </label>
                     <input
-                      type="checkbox"
-                      checked={debugPrompt}
-                      onChange={(e) => setDebugPrompt(e.target.checked)}
+                      id="title"
+                      name="title"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      placeholder='e.g. "Thinking, Fast and Slow", chapters 1–3'
+                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-base outline-none ring-accent/30 transition-[border-color,box-shadow] duration-150 ease-out focus:ring-2 dark:border-slate-700 dark:bg-slate-900 sm:text-sm"
                     />
-                    Debug prompt
+                  </div>
+                  <div className="shrink-0">
+                    <label
+                      htmlFor="count"
+                      className="mb-1 block text-sm font-medium text-slate-800 dark:text-slate-100"
+                    >
+                      Questions
+                    </label>
+                    <div className="relative">
+                      <select
+                        id="count"
+                        value={questionCount}
+                        onChange={(e) =>
+                          setQuestionCount(Number(e.target.value) as QuestionCount)
+                        }
+                        className="h-[46px] w-full appearance-none rounded-xl border border-[rgb(var(--border))] bg-white px-3 py-2 pr-8 text-base text-[rgb(var(--foreground))] outline-none ring-accent/30 focus:border-accent focus:ring-2 sm:h-[42px] sm:text-sm"
+                      >
+                        {allowedCounts.map((n) => (
+                          <option key={n} value={n}>{n}</option>
+                        ))}
+                      </select>
+                      <svg className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[rgb(var(--muted))]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Summary — primary large input */}
+                <div>
+                  <label
+                    htmlFor="summary"
+                    className="mb-1 block text-sm font-medium text-slate-800 dark:text-slate-100"
+                  >
+                    Summary / key points
+                    <span className="ml-1.5 font-normal text-slate-400 dark:text-slate-500">
+                      (main input)
+                    </span>
                   </label>
-                )}
-                {!loading && (
+                  <textarea
+                    id="summary"
+                    name="summary"
+                    value={summaryText}
+                    onChange={(e) => setSummaryText(e.target.value)}
+                    rows={7}
+                    placeholder="Paste a book chapter, lecture notes, bullet points, or any material you want to quiz yourself on…"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-base outline-none ring-accent/30 transition-[border-color,box-shadow] duration-150 ease-out focus:ring-2 dark:border-slate-700 dark:bg-slate-900 sm:text-sm"
+                  />
+                </div>
+
+                {/* Optional notes — collapsed by default */}
+                {showNotes ? (
+                  <div>
+                    <div className="mb-1 flex items-center justify-between">
+                      <label
+                        htmlFor="notes"
+                        className="text-sm font-medium text-slate-800 dark:text-slate-100"
+                      >
+                        Optional notes
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowNotes(false);
+                          setNotes("");
+                        }}
+                        className="text-xs text-slate-400 underline hover:text-slate-600 dark:hover:text-slate-200"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                    <textarea
+                      id="notes"
+                      name="notes"
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      rows={3}
+                      placeholder="Additional context or ideas to focus on during the quiz"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-base outline-none ring-accent/30 transition-[border-color,box-shadow] duration-150 ease-out focus:ring-2 dark:border-slate-700 dark:bg-slate-900 sm:text-sm"
+                    />
+                  </div>
+                ) : (
                   <button
                     type="button"
-                    onClick={() => setFormExpanded(false)}
-                    className="rounded-lg px-2 py-1 text-xs font-medium text-slate-500 underline transition-colors duration-150 ease-out hover:text-slate-700 dark:hover:text-slate-200"
-                    aria-label="Collapse generator"
+                    onClick={() => setShowNotes(true)}
+                    className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-slate-500 transition-colors duration-150 ease-out hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
                   >
-                    Collapse
+                    <PlusIcon />
+                    Add optional notes
                   </button>
                 )}
-              </div>
-            </div>
 
-        <form className="space-y-4" onSubmit={onGenerate}>
-          {/* Title + question count in one row */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-            <div className="flex-1">
-              <label
-                htmlFor="title"
-                className="mb-1 block text-sm font-medium text-slate-800 dark:text-slate-100"
-              >
-                Book / article / topic title
-              </label>
-              <input
-                id="title"
-                name="title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder='e.g. "Thinking, Fast and Slow", chapters 1–3'
-                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-base outline-none ring-accent/30 transition-[border-color,box-shadow] duration-150 ease-out focus:ring-2 dark:border-slate-700 dark:bg-slate-900 sm:text-sm"
-              />
-            </div>
-            <div className="shrink-0">
-              <label
-                htmlFor="count"
-                className="mb-1 block text-sm font-medium text-slate-800 dark:text-slate-100"
-              >
-                Questions
-              </label>
-              <div className="relative">
-                <select
-                  id="count"
-                  value={questionCount}
-                  onChange={(e) =>
-                    setQuestionCount(Number(e.target.value) as QuestionCount)
-                  }
-                  className="h-[46px] w-full appearance-none rounded-xl border border-[rgb(var(--border))] bg-white px-3 py-2 pr-8 text-base text-[rgb(var(--foreground))] outline-none ring-accent/30 focus:border-accent focus:ring-2 sm:h-[42px] sm:text-sm"
-                >
-                  {allowedCounts.map((n) => (
-                    <option key={n} value={n}>{n}</option>
-                  ))}
-                </select>
-                <svg className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[rgb(var(--muted))]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></svg>
-              </div>
-            </div>
-          </div>
+                {/* Error */}
+                {error ? (
+                  <div
+                    role="alert"
+                    className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-200"
+                  >
+                    {error}
+                  </div>
+                ) : null}
 
-          {/* Summary — primary large input */}
-          <div>
-            <label
-              htmlFor="summary"
-              className="mb-1 block text-sm font-medium text-slate-800 dark:text-slate-100"
-            >
-              Summary / key points
-              <span className="ml-1.5 font-normal text-slate-400 dark:text-slate-500">
-                (main input)
-              </span>
-            </label>
-            <textarea
-              id="summary"
-              name="summary"
-              value={summaryText}
-              onChange={(e) => setSummaryText(e.target.value)}
-              rows={7}
-              placeholder="Paste a book chapter, lecture notes, bullet points, or any material you want to quiz yourself on…"
-              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-base outline-none ring-accent/30 transition-[border-color,box-shadow] duration-150 ease-out focus:ring-2 dark:border-slate-700 dark:bg-slate-900 sm:text-sm"
-            />
-          </div>
+                {/* Generation progress */}
+                {loading ? (
+                  <GenerationProgress
+                    message="Generating your quiz…"
+                    questionCount={questionCount}
+                    className="rounded-xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-800/40"
+                  />
+                ) : null}
 
-          {/* Optional notes — collapsed by default */}
-          {showNotes ? (
-            <div>
-              <div className="mb-1 flex items-center justify-between">
-                <label
-                  htmlFor="notes"
-                  className="text-sm font-medium text-slate-800 dark:text-slate-100"
+                {/* Debug payload */}
+                {debugPayload ? (
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold uppercase text-slate-500">
+                      Prompt bundle (dev)
+                    </p>
+                    <pre className="max-h-48 overflow-auto rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs dark:border-slate-700 dark:bg-slate-900">
+                      {debugPayload}
+                    </pre>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="!text-xs"
+                      onClick={() =>
+                        void navigator.clipboard.writeText(debugPayload)
+                      }
+                    >
+                      Copy prompt JSON
+                    </Button>
+                  </div>
+                ) : null}
+
+                {/* CTA — full-width, prominent */}
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full sm:w-auto sm:px-8"
                 >
-                  Optional notes
-                </label>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowNotes(false);
-                    setNotes("");
-                  }}
-                  className="text-xs text-slate-400 underline hover:text-slate-600 dark:hover:text-slate-200"
-                >
-                  Remove
-                </button>
-              </div>
-              <textarea
-                id="notes"
-                name="notes"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={3}
-                placeholder="Additional context or ideas to focus on during the quiz"
-                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-base outline-none ring-accent/30 transition-[border-color,box-shadow] duration-150 ease-out focus:ring-2 dark:border-slate-700 dark:bg-slate-900 sm:text-sm"
-              />
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setShowNotes(true)}
-              className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-slate-500 transition-colors duration-150 ease-out hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-            >
-              <PlusIcon />
-              Add optional notes
-            </button>
+                  {loading ? "Generating…" : "Generate quiz →"}
+                </Button>
+              </form>
+            </>
           )}
-
-          {/* Error */}
-          {error ? (
-            <div
-              role="alert"
-              className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-200"
-            >
-              {error}
-            </div>
-          ) : null}
-
-          {/* Generation progress */}
-          {loading ? (
-            <GenerationProgress
-              message="Generating your quiz…"
-              questionCount={questionCount}
-              className="rounded-xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-800/40"
-            />
-          ) : null}
-
-          {/* Debug payload */}
-          {debugPayload ? (
-            <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase text-slate-500">
-                Prompt bundle (dev)
-              </p>
-              <pre className="max-h-48 overflow-auto rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs dark:border-slate-700 dark:bg-slate-900">
-                {debugPayload}
-              </pre>
-              <Button
-                type="button"
-                variant="outline"
-                className="!text-xs"
-                onClick={() =>
-                  void navigator.clipboard.writeText(debugPayload)
-                }
-              >
-                Copy prompt JSON
-              </Button>
-            </div>
-          ) : null}
-
-          {/* CTA — full-width, prominent */}
-          <Button
-            type="submit"
-            disabled={loading}
-            className="w-full sm:w-auto sm:px-8"
-          >
-            {loading ? "Generating…" : "Generate quiz →"}
-          </Button>
-        </form>
-          </>
-        )}
-      </Card>
+        </Card>
       )}
 
-      {/* ── Custom quizzes — free-tier upsell + waitlist capture ──────── */}
       {subscriptionTier === "free" && (
         <CustomQuizzesCard
           userEmail={userEmail}
@@ -1035,14 +1013,16 @@ export function DashboardView({
         />
       )}
 
+      {/* ── Picked for you — hero + alternates ─────────────────────────── */}
+      {recommendedQuizzes.length > 0 && (
+        <RecommendedQuizzes quizzes={recommendedQuizzes} />
+      )}
+
       {/* ── Daily progress ─────────────────────────────────────────────── */}
       <DailyProgressDashboard
         sessions={dailyProgressSessions}
         subscriptionTier={subscriptionTier}
       />
-
-      {/* ── Mini leaderboard ───────────────────────────────────────────── */}
-      <MiniLeaderboard leaderboard={leaderboard} />
 
       {/* ── Activity — unified history ─────────────────────────────────── */}
       <ActivitySection
@@ -1061,6 +1041,9 @@ export function DashboardView({
           window.scrollTo({ top: 0, behavior: "smooth" });
         }}
       />
+
+      {/* ── Mini leaderboard ───────────────────────────────────────────── */}
+      <MiniLeaderboard leaderboard={leaderboard} />
     </div>
   );
 }

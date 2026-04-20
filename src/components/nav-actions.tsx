@@ -17,14 +17,20 @@ async function getNavUser() {
 function NavLink({
   href,
   children,
+  variant = "default",
 }: {
   href: string;
   children: React.ReactNode;
+  variant?: "default" | "primary";
 }) {
   return (
     <Link
       href={href}
-      className="rounded-lg px-3 py-2 text-sm font-medium text-[rgb(var(--foreground))]/70 transition-colors duration-150 ease-out hover:bg-black/5 hover:text-[rgb(var(--foreground))] dark:hover:bg-white/5"
+      className={
+        variant === "primary"
+          ? "rounded-xl border border-[rgb(var(--accent)/0.24)] bg-[rgb(var(--accent)/0.10)] px-3 py-2 text-sm font-semibold text-[rgb(var(--accent-ink))] shadow-[0_1px_2px_rgba(26,26,32,0.04)] transition-[background-color,border-color,transform] duration-150 ease-out hover:border-[rgb(var(--accent)/0.34)] hover:bg-[rgb(var(--accent)/0.16)] active:scale-[0.97]"
+          : "rounded-lg px-3 py-2 text-sm font-medium text-[rgb(var(--foreground))]/70 transition-colors duration-150 ease-out hover:bg-black/5 hover:text-[rgb(var(--foreground))] dark:hover:bg-white/5"
+      }
     >
       {children}
     </Link>
@@ -69,7 +75,9 @@ export async function NavActions() {
     <>
       {/* Desktop */}
       <div className="hidden items-center gap-1 md:flex">
-        <NavLink href="/dashboard">Dashboard</NavLink>
+        <NavLink href="/dashboard" variant="primary">
+          Dashboard
+        </NavLink>
         <NavLink href="/topics">Topics</NavLink>
         <NavLink href="/leaderboard">Leaderboard</NavLink>
         <NavLink href="/pricing">Pricing</NavLink>
@@ -97,6 +105,12 @@ export async function NavActions() {
 
       {/* Mobile + Tablet */}
       <div className="flex items-center gap-1 md:hidden">
+        <Link
+          href="/dashboard"
+          className="inline-flex h-10 items-center justify-center rounded-xl border border-[rgb(var(--accent)/0.24)] bg-[rgb(var(--accent)/0.10)] px-3 text-xs font-semibold text-[rgb(var(--accent-ink))] shadow-[0_1px_2px_rgba(26,26,32,0.04)] transition-[background-color,border-color,transform] duration-150 ease-out hover:border-[rgb(var(--accent)/0.34)] hover:bg-[rgb(var(--accent)/0.16)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        >
+          Dashboard
+        </Link>
         <Link
           href="/profile"
           aria-label={`${displayName} · your profile`}

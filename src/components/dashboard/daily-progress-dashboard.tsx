@@ -27,28 +27,35 @@ type Props = {
 type RangeOption = {
   days: number;
   label: string;
+  tier: Tier;
 };
 
-const RANGE_OPTIONS: Record<Tier, RangeOption[]> = {
-  free: [{ days: 7, label: "7d" }],
-  builder: [
-    { days: 7, label: "7d" },
-    { days: 30, label: "30d" },
-  ],
-  scholar: [
-    { days: 7, label: "7d" },
-    { days: 30, label: "30d" },
-    { days: 120, label: "120d" },
-  ],
-  master: [
-    { days: 7, label: "7d" },
-    { days: 30, label: "30d" },
-    { days: 120, label: "120d" },
-    { days: 365, label: "1y" },
-  ],
+const TIERS_IN_ORDER: Tier[] = ["free", "builder", "scholar", "master"];
+
+const ALL_RANGE_OPTIONS: RangeOption[] = [
+  { days: 7, label: "7d", tier: "free" },
+  { days: 30, label: "30d", tier: "builder" },
+  { days: 120, label: "120d", tier: "scholar" },
+  { days: 365, label: "1y", tier: "master" },
+];
+
+const TIER_LABELS: Record<Tier, string> = {
+  free: "Free",
+  builder: "Builder",
+  scholar: "Scholar",
+  master: "Master",
 };
 
-function getDefaultRangeDays(ranges: RangeOption[]) {
+function tierAllowsRange(currentTier: Tier, requiredTier: Tier) {
+  return TIERS_IN_ORDER.indexOf(currentTier) >= TIERS_IN_ORDER.indexOf(requiredTier);
+}
+
+function rangesForTier(tier: Tier) {
+  return ALL_RANGE_OPTIONS.filter((range) => tierAllowsRange(tier, range.tier));
+}
+
+function getDefaultRangeDays(tier: Tier) {
+  const ranges = rangesForTier(tier);
   return ranges.find((range) => range.days === 30)?.days ?? ranges[0]!.days;
 }
 
@@ -134,8 +141,8 @@ function getAllowedGranularities(rangeDays: number): ProgressGranularity[] {
 }
 
 export function DailyProgressDashboard({ sessions, subscriptionTier }: Props) {
-  const availableRanges = RANGE_OPTIONS[subscriptionTier];
-  const defaultRange = getDefaultRangeDays(availableRanges);
+  const availableRanges = rangesForTier(subscriptionTier);
+  const defaultRange = getDefaultRangeDays(subscriptionTier);
   const today = useMemo(() => startOfDay(new Date()), []);
   const maxHistoryDays = availableRanges[availableRanges.length - 1]!.days;
   const earliestDate = useMemo(
@@ -153,6 +160,7 @@ export function DailyProgressDashboard({ sessions, subscriptionTier }: Props) {
   const [rangeEnd, setRangeEnd] = useState<Date>(today);
   const [draftStart, setDraftStart] = useState(formatLocalYMD(initialStart));
   const [draftEnd, setDraftEnd] = useState(formatLocalYMD(today));
+  const [customRangeOpen, setCustomRangeOpen] = useState(false);
   const [granularityMode, setGranularityMode] = useState<GranularityMode>("auto");
   const [dateError, setDateError] = useState<string | null>(null);
   const [selectedBucketKey, setSelectedBucketKey] = useState<string | null>(null);
@@ -228,6 +236,7 @@ export function DailyProgressDashboard({ sessions, subscriptionTier }: Props) {
     setRangeEnd(today);
     setDraftStart(formatLocalYMD(presetStart));
     setDraftEnd(formatLocalYMD(today));
+    setCustomRangeOpen(false);
     setDateError(null);
     setSelectedBucketKey(null);
   }
@@ -322,7 +331,7 @@ export function DailyProgressDashboard({ sessions, subscriptionTier }: Props) {
               : "–"}
           </p>
           <p className="mt-1 text-[11px] text-slate-500">
-            across the selected range
+            {formatRangeSummary(rangeStart, rangeEnd)}
           </p>
         </div>
       </div>
@@ -350,28 +359,60 @@ export function DailyProgressDashboard({ sessions, subscriptionTier }: Props) {
           <div className="space-y-2">
             <div className="flex flex-wrap gap-2">
               <div
-                className="inline-flex w-fit gap-0.5 rounded-lg border border-slate-200 bg-slate-50 p-0.5 dark:border-slate-700 dark:bg-slate-900/60"
+                className="inline-flex w-fit gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1 dark:border-slate-700 dark:bg-slate-900/60"
                 role="group"
                 aria-label="Date range presets"
               >
-                {availableRanges.map((range) => (
-                  <button
-                    key={range.days}
-                    type="button"
-                    onClick={() => applyPreset(range.days)}
-                    className={`rounded-md px-2.5 py-1 text-[11px] font-semibold transition-[color,background-color,box-shadow] duration-150 ease-out active:scale-[0.97] ${
-                      selectedPresetDays === range.days
-                        ? "bg-white text-accent shadow-sm dark:bg-slate-800 dark:text-accent"
-                        : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
-                    }`}
-                  >
-                    {range.label}
-                  </button>
-                ))}
+                {ALL_RANGE_OPTIONS.map((range) => {
+                  const unlocked = tierAllowsRange(subscriptionTier, range.tier);
+                  const selected = selectedPresetDays === range.days;
+                  return (
+                    <Link
+                      key={range.days}
+                      href={unlocked ? "#" : "/pricing"}
+                      onClick={(event) => {
+                        if (unlocked) {
+                          event.preventDefault();
+                          applyPreset(range.days);
+                        }
+                      }}
+                      aria-disabled={!unlocked}
+                      title={
+                        unlocked
+                          ? `Show the last ${range.days} days`
+                          : `${TIER_LABELS[range.tier]} unlocks ${range.label} history`
+                      }
+                      className={`inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-[color,background-color,box-shadow,transform] duration-150 ease-out active:scale-[0.97] ${
+                        selected
+                          ? "bg-white text-accent shadow-sm dark:bg-slate-800 dark:text-accent"
+                          : unlocked
+                            ? "text-slate-600 hover:bg-white/70 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+                            : "text-slate-400 hover:bg-white/60 hover:text-slate-600 dark:text-slate-600 dark:hover:bg-slate-800"
+                      }`}
+                    >
+                      <span>{range.label}</span>
+                      {!unlocked && (
+                        <svg
+                          aria-hidden
+                          className="h-3 w-3"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.4"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <rect x="5" y="11" width="14" height="10" rx="2" />
+                          <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+                        </svg>
+                      )}
+                    </Link>
+                  );
+                })}
               </div>
 
               <div
-                className="inline-flex w-fit gap-0.5 rounded-lg border border-slate-200 bg-slate-50 p-0.5 dark:border-slate-700 dark:bg-slate-900/60"
+                className="inline-flex w-fit gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1 dark:border-slate-700 dark:bg-slate-900/60"
                 role="group"
                 aria-label="Chart granularity"
               >
@@ -380,7 +421,7 @@ export function DailyProgressDashboard({ sessions, subscriptionTier }: Props) {
                     key={mode}
                     type="button"
                     onClick={() => setGranularityMode(mode)}
-                    className={`rounded-md px-2.5 py-1 text-[11px] font-semibold capitalize transition-[color,background-color,box-shadow] duration-150 ease-out active:scale-[0.97] ${
+                    className={`h-8 rounded-lg px-3 text-xs font-semibold capitalize transition-[color,background-color,box-shadow] duration-150 ease-out active:scale-[0.97] ${
                       granularityMode === mode
                         ? "bg-white text-accent shadow-sm dark:bg-slate-800 dark:text-accent"
                         : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
@@ -390,45 +431,75 @@ export function DailyProgressDashboard({ sessions, subscriptionTier }: Props) {
                   </button>
                 ))}
               </div>
-            </div>
-
-            <div className="flex flex-wrap items-end gap-2">
-              <label className="flex flex-col gap-1">
-                <span className="text-[11px] font-medium text-slate-500">
-                  From
-                </span>
-                <input
-                  type="date"
-                  min={formatLocalYMD(earliestDate)}
-                  max={formatLocalYMD(today)}
-                  value={draftStart}
-                  onChange={(event) => setDraftStart(event.target.value)}
-                  className="h-9 rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-900 outline-none ring-accent/20 transition-[border-color,box-shadow] duration-150 ease-out focus:border-accent focus:ring-2 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-                />
-              </label>
-
-              <label className="flex flex-col gap-1">
-                <span className="text-[11px] font-medium text-slate-500">
-                  To
-                </span>
-                <input
-                  type="date"
-                  min={formatLocalYMD(earliestDate)}
-                  max={formatLocalYMD(today)}
-                  value={draftEnd}
-                  onChange={(event) => setDraftEnd(event.target.value)}
-                  className="h-9 rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-900 outline-none ring-accent/20 transition-[border-color,box-shadow] duration-150 ease-out focus:border-accent focus:ring-2 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-                />
-              </label>
 
               <button
                 type="button"
-                onClick={applyCustomRange}
-                className="inline-flex h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition-[background-color,transform] duration-150 ease-out hover:bg-slate-50 active:scale-[0.98] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                onClick={() => setCustomRangeOpen((open) => !open)}
+                aria-expanded={customRangeOpen}
+                className={`inline-flex h-10 items-center gap-2 rounded-xl border px-3 text-xs font-semibold transition-[background-color,border-color,transform] duration-150 ease-out active:scale-[0.97] ${
+                  customRangeOpen || selectedPresetDays === null
+                    ? "border-accent/30 bg-accent/10 text-accent"
+                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+                }`}
               >
-                Apply range
+                <svg
+                  aria-hidden
+                  className="h-4 w-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.1"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <rect x="3" y="4" width="18" height="18" rx="3" />
+                  <path d="M8 2v4M16 2v4M3 10h18" />
+                </svg>
+                Dates
               </button>
             </div>
+
+            {customRangeOpen && (
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/50">
+                <div className="flex flex-wrap items-end gap-2">
+                  <label className="flex min-w-[9.5rem] flex-1 flex-col gap-1">
+                    <span className="text-[11px] font-medium text-slate-500">
+                      From
+                    </span>
+                    <input
+                      type="date"
+                      min={formatLocalYMD(earliestDate)}
+                      max={formatLocalYMD(today)}
+                      value={draftStart}
+                      onChange={(event) => setDraftStart(event.target.value)}
+                      className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none ring-accent/20 transition-[border-color,box-shadow] duration-150 ease-out focus:border-accent focus:ring-2 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                    />
+                  </label>
+
+                  <label className="flex min-w-[9.5rem] flex-1 flex-col gap-1">
+                    <span className="text-[11px] font-medium text-slate-500">
+                      To
+                    </span>
+                    <input
+                      type="date"
+                      min={formatLocalYMD(earliestDate)}
+                      max={formatLocalYMD(today)}
+                      value={draftEnd}
+                      onChange={(event) => setDraftEnd(event.target.value)}
+                      className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none ring-accent/20 transition-[border-color,box-shadow] duration-150 ease-out focus:border-accent focus:ring-2 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                    />
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={applyCustomRange}
+                    className="inline-flex h-10 items-center justify-center rounded-xl bg-accent px-4 text-sm font-semibold text-white shadow-sm transition-[background-color,transform] duration-150 ease-out hover:bg-emerald-600 active:scale-[0.98]"
+                  >
+                    Apply
+                  </button>
+                </div>
+              </div>
+            )}
 
             {dateError ? (
               <p className="text-[11px] font-medium text-rose-600 dark:text-rose-400">

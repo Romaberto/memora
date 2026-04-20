@@ -17,7 +17,7 @@ export function SiteHeader() {
             height={44}
             className="rounded-xl"
           />
-          <span className="text-xl font-bold tracking-tight text-[rgb(var(--foreground))]">
+          <span className="text-xl font-bold tracking-tight text-[rgb(var(--foreground))] max-[374px]:hidden">
             memora
           </span>
         </Link>
