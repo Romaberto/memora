@@ -50,6 +50,7 @@ export default async function PremadeQuizPage({ params }: PageProps) {
         initialQuizRequestId={premade.quizRequest.id}
         topic={premade.title}
         questions={questions}
+        subscriptionTier={subscriptionTier}
         initialFallbackNotice={null}
       />
     </div>

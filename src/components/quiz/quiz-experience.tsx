@@ -13,6 +13,8 @@ import { isQuestionCount } from "@/lib/schemas/quiz";
 import { applyDisplayShuffle } from "@/lib/shuffle-mcq";
 import { formatQuizClock } from "@/lib/format-quiz-clock";
 import { pointsForStreak } from "@/lib/scoring";
+import { RelatedTopicsCard } from "@/components/dashboard/related-topics-card";
+import type { TierId } from "@/lib/tiers";
 
 export type QuizQuestionClient = {
   id: string;
@@ -35,6 +37,7 @@ type Props = {
   initialQuizRequestId: string;
   topic: string;
   questions: QuizQuestionClient[];
+  subscriptionTier: TierId;
   initialFallbackNotice?: string | null;
 };
 
@@ -54,6 +57,7 @@ export function QuizExperience({
   initialQuizRequestId,
   topic,
   questions: initialQuestions,
+  subscriptionTier,
   initialFallbackNotice = null,
 }: Props) {
   const reduceMotion = useReducedMotion();
@@ -431,6 +435,13 @@ export function QuizExperience({
             <Button type="button" variant="ghost" disabled={regenLoading}>New quiz</Button>
           </Link>
         </div>
+
+        {result.sessionId ? (
+          <RelatedTopicsCard
+            sessionId={result.sessionId}
+            subscriptionTier={subscriptionTier}
+          />
+        ) : null}
       </div>
     );
   }

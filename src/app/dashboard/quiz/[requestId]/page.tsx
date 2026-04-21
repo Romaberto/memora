@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { QuizExperience } from "@/components/quiz/quiz-experience";
 import { Button } from "@/components/ui/button";
+import { getUserSubscription } from "@/lib/subscription";
 
 type PageProps = {
   params: { requestId: string };
@@ -15,10 +16,13 @@ export default async function QuizPage({ params, searchParams }: PageProps) {
   const userId = await requireUserId();
   const { requestId } = params;
 
-  const req = await prisma.quizRequest.findFirst({
-    where: { id: requestId, userId },
-    include: { questions: { orderBy: { order: "asc" } } },
-  });
+  const [req, subscriptionTier] = await Promise.all([
+    prisma.quizRequest.findFirst({
+      where: { id: requestId, userId },
+      include: { questions: { orderBy: { order: "asc" } } },
+    }),
+    getUserSubscription(userId),
+  ]);
 
   if (!req) notFound();
 
@@ -55,6 +59,7 @@ export default async function QuizPage({ params, searchParams }: PageProps) {
         initialQuizRequestId={req.id}
         topic={req.topic}
         questions={questions}
+        subscriptionTier={subscriptionTier}
         initialFallbackNotice={initialFallbackNotice}
       />
     </div>

@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { encouragingMessage } from "@/lib/ranks";
 import { formatDateTimeStable } from "@/lib/format-date";
 import { formatDurationHuman } from "@/lib/format-quiz-clock";
+import { getUserSubscription } from "@/lib/subscription";
+import { RelatedTopicsCard } from "@/components/dashboard/related-topics-card";
 
 type PageProps = { params: { sessionId: string } };
 
@@ -14,13 +16,16 @@ export default async function SessionReviewPage({ params }: PageProps) {
   const userId = await requireUserId();
   const { sessionId } = params;
 
-  const row = await prisma.quizSession.findFirst({
-    where: { id: sessionId, userId },
-    include: {
-      quizRequest: true,
-      answers: { include: { quizQuestion: true } },
-    },
-  });
+  const [row, subscriptionTier] = await Promise.all([
+    prisma.quizSession.findFirst({
+      where: { id: sessionId, userId },
+      include: {
+        quizRequest: true,
+        answers: { include: { quizQuestion: true } },
+      },
+    }),
+    getUserSubscription(userId),
+  ]);
 
   if (!row) notFound();
 
@@ -78,6 +83,11 @@ export default async function SessionReviewPage({ params }: PageProps) {
           {pct}% · {msg}
         </p>
       </Card>
+
+      <RelatedTopicsCard
+        sessionId={row.id}
+        subscriptionTier={subscriptionTier}
+      />
 
       <section className="space-y-4">
         <CardTitle className="text-lg">Question breakdown</CardTitle>

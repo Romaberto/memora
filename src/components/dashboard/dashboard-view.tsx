@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { GenerationProgress } from "@/components/ui/generation-progress";
 import { QUESTION_COUNTS, type QuestionCount } from "@/lib/schemas/quiz";
-import { getAllowedQuestionCountsForTier, type TierId } from "@/lib/tiers";
+import { getAllowedQuestionCountsForTier, getTier, type TierId } from "@/lib/tiers";
 import { formatDateTimeStable } from "@/lib/format-date";
 import { formatDurationHuman } from "@/lib/format-quiz-clock";
 import { DailyProgressDashboard } from "@/components/dashboard/daily-progress-dashboard";
@@ -129,6 +129,119 @@ function DashboardStatusSummary({
         <StatusMetric label="Quizzes" value={String(totalSessions)} />
         <StatusMetric label="Week" value={String(sessionsLast7Days)} />
         <StatusMetric label="Rank" value={userRank > 0 ? `#${userRank}` : "New"} />
+      </div>
+    </section>
+  );
+}
+
+export type DashboardRelatedTopicSuggestion = {
+  id: string;
+  title: string;
+  angle: string;
+  sourceTitle: string;
+  sourceCreatedAt: string;
+  createdAt: string;
+};
+
+function RecentTopicIdeas({
+  ideas,
+  canCreateCustomQuiz,
+  onSelect,
+  onUpgrade,
+}: {
+  ideas: DashboardRelatedTopicSuggestion[];
+  canCreateCustomQuiz: boolean;
+  onSelect: (topic: string) => void;
+  onUpgrade: () => void;
+}) {
+  if (ideas.length === 0) return null;
+  const [primary, ...secondary] = ideas;
+  const secondaryIdeas = secondary.slice(0, 4);
+
+  return (
+    <section aria-label="Custom quiz ideas from recent activity">
+      <div className="rounded-xl border border-[rgb(var(--accent)/0.18)] bg-gradient-to-br from-[rgb(var(--accent)/0.06)] via-white to-white p-5 shadow-[0_1px_2px_rgba(26,26,32,0.04)] sm:p-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[rgb(var(--accent-ink))]">
+              Recommended next
+            </p>
+            <h2 className="mt-1 text-xl font-bold tracking-tight text-[rgb(var(--foreground))] sm:text-2xl">
+              {primary.title}
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[rgb(var(--muted))]">
+              {primary.angle}
+            </p>
+          </div>
+
+          {!canCreateCustomQuiz ? (
+            <span className="inline-flex self-start rounded-full bg-[rgb(var(--accent)/0.12)] px-3 py-1 text-xs font-semibold text-[rgb(var(--accent-ink))]">
+              Custom quizzes required
+            </span>
+          ) : null}
+        </div>
+
+        <div className="mt-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="min-w-0">
+            <p className="text-xs leading-relaxed text-[rgb(var(--muted))] sm:line-clamp-1">
+              Based on your recent quiz history, especially{" "}
+              <span className="font-medium text-[rgb(var(--foreground))]">
+                {primary.sourceTitle}
+              </span>
+              .
+            </p>
+
+            {secondaryIdeas.length > 0 ? (
+              <div className="mt-3">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[rgb(var(--muted))]">
+                  Other good paths
+                </p>
+                <div className="mt-2 grid gap-2 sm:flex sm:flex-wrap">
+                  {secondaryIdeas.map((idea) =>
+                    canCreateCustomQuiz ? (
+                      <button
+                        key={idea.id}
+                        type="button"
+                        onClick={() => onSelect(idea.title)}
+                        className="group flex w-full items-start justify-between gap-3 rounded-lg border border-[rgb(var(--accent)/0.22)] bg-white px-3 py-2.5 text-left text-xs font-semibold text-[rgb(var(--foreground))] transition-[background-color,border-color,transform] duration-150 ease-out hover:border-[rgb(var(--accent)/0.45)] hover:bg-[rgb(var(--accent)/0.08)] active:scale-[0.98] sm:inline-flex sm:w-auto sm:max-w-full sm:items-center sm:gap-2 sm:py-2"
+                      >
+                        <span className="min-w-0 leading-snug sm:line-clamp-1">
+                          {idea.title}
+                        </span>
+                        <span className="shrink-0 pt-0.5 text-[rgb(var(--accent-ink))] opacity-70 transition-opacity group-hover:opacity-100 sm:pt-0">
+                          Use
+                        </span>
+                      </button>
+                    ) : (
+                      <div
+                        key={idea.id}
+                        className="flex w-full items-start justify-between gap-3 rounded-lg border border-[rgb(var(--border))] bg-white/60 px-3 py-2.5 text-xs font-semibold text-[rgb(var(--muted))] sm:inline-flex sm:w-auto sm:max-w-full sm:items-center sm:gap-2 sm:py-2"
+                        aria-disabled="true"
+                      >
+                        <span className="min-w-0 leading-snug sm:line-clamp-1">
+                          {idea.title}
+                        </span>
+                        <span className="shrink-0 rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] uppercase tracking-[0.08em] text-slate-500">
+                          Locked
+                        </span>
+                      </div>
+                    ),
+                  )}
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          <button
+            type="button"
+            onClick={() =>
+              canCreateCustomQuiz ? onSelect(primary.title) : onUpgrade()
+            }
+            className="inline-flex h-12 shrink-0 items-center justify-center rounded-xl bg-[rgb(var(--accent))] px-5 text-sm font-semibold text-white shadow-sm transition-[background-color,transform] duration-150 ease-out hover:bg-[rgb(var(--accent-ink))] active:scale-[0.98] sm:min-w-44"
+          >
+            {canCreateCustomQuiz ? "Create this quiz" : "Unlock custom quizzes"}
+          </button>
+        </div>
       </div>
     </section>
   );
@@ -507,8 +620,10 @@ type Props = {
   dailyQuizCount: number;
   dailyQuizLimit: number;
   recommendedQuizzes: RecommendedQuiz[];
+  recentTopicIdeas: DashboardRelatedTopicSuggestion[];
   userEmail: string | null;
   alreadyOnWaitlist: boolean;
+  initialCustomTopic: string | null;
   stats: {
     totalSessions: number;
     avgPercentage: number | null;
@@ -534,6 +649,24 @@ function medalEmoji(rank: number) {
   return `#${rank}`;
 }
 
+function mergeTopicIdeas(
+  primary: DashboardRelatedTopicSuggestion[],
+  fallback: DashboardRelatedTopicSuggestion[],
+) {
+  const seen = new Set<string>();
+  const out: DashboardRelatedTopicSuggestion[] = [];
+
+  for (const idea of [...primary, ...fallback]) {
+    const key = idea.title.trim().toLowerCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(idea);
+    if (out.length >= 5) break;
+  }
+
+  return out;
+}
+
 export function DashboardView({
   userName,
   requests,
@@ -543,8 +676,10 @@ export function DashboardView({
   dailyQuizCount,
   dailyQuizLimit,
   recommendedQuizzes,
+  recentTopicIdeas,
   userEmail,
   alreadyOnWaitlist,
+  initialCustomTopic,
   stats,
   leaderboard,
 }: Props) {
@@ -553,9 +688,10 @@ export function DashboardView({
     dailyQuizLimit > 0
       ? `${dailyQuizLimit} custom quizzes per day.`
       : "Unlimited custom quizzes.";
+  const canCreateCustomQuiz = getTier(subscriptionTier).canCustomQuiz;
 
   // form state
-  const [title, setTitle] = useState("");
+  const [title, setTitle] = useState(initialCustomTopic ?? "");
   const [summaryText, setSummaryText] = useState("");
   const [notes, setNotes] = useState("");
   // Tier-gated question counts. Builder caps at 20, Scholar at 30, Master at 50.
@@ -581,7 +717,9 @@ export function DashboardView({
   // Collapse the full generator for returning users — we expand when the user
   // hits the "+ New quiz" trigger or prefills from history.
   const hasHistory = sessions.length > 0 || requests.length > 0;
-  const [formExpanded, setFormExpanded] = useState<boolean>(!hasHistory);
+  const [formExpanded, setFormExpanded] = useState<boolean>(
+    Boolean(initialCustomTopic) || !hasHistory,
+  );
 
   // open notes panel automatically when prefill sets a value
   useEffect(() => {
@@ -604,6 +742,62 @@ export function DashboardView({
     () => new Map(),
   );
   const [historyError, setHistoryError] = useState<string | null>(null);
+  const [cachedRecentTopicIdeas, setCachedRecentTopicIdeas] = useState<
+    DashboardRelatedTopicSuggestion[]
+  >([]);
+
+  useEffect(() => {
+    const seen = new Set<string>();
+    const ideas: DashboardRelatedTopicSuggestion[] = [];
+
+    for (const session of sessions.slice(0, 5)) {
+      try {
+        const raw = window.sessionStorage.getItem(
+          `memora:related-topics:${session.id}`,
+        );
+        if (!raw) continue;
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) continue;
+
+        for (const item of parsed.slice(0, 5)) {
+          if (!item || typeof item !== "object") continue;
+          const maybe = item as { title?: unknown; angle?: unknown };
+          if (
+            typeof maybe.title !== "string" ||
+            typeof maybe.angle !== "string"
+          ) {
+            continue;
+          }
+
+          const title = maybe.title.trim();
+          const angle = maybe.angle.trim();
+          const key = title.toLowerCase();
+          if (!title || !angle || seen.has(key)) continue;
+          seen.add(key);
+          ideas.push({
+            id: `cached:${session.id}:${ideas.length}`,
+            title,
+            angle,
+            sourceTitle: session.topic,
+            sourceCreatedAt: session.createdAt,
+            createdAt: session.createdAt,
+          });
+          if (ideas.length >= 5) break;
+        }
+      } catch {
+        continue;
+      }
+
+      if (ideas.length >= 5) break;
+    }
+
+    setCachedRecentTopicIdeas(ideas);
+  }, [sessions]);
+
+  const mergedRecentTopicIdeas = mergeTopicIdeas(
+    recentTopicIdeas,
+    cachedRecentTopicIdeas,
+  );
 
   // cancel any pending timeouts if the component unmounts
   useEffect(() => {
@@ -1012,6 +1206,19 @@ export function DashboardView({
           alreadyOnWaitlist={alreadyOnWaitlist}
         />
       )}
+
+      <RecentTopicIdeas
+        ideas={mergedRecentTopicIdeas}
+        canCreateCustomQuiz={canCreateCustomQuiz}
+        onSelect={(topic) => {
+          setTitle(topic);
+          setSummaryText("");
+          setNotes("");
+          setFormExpanded(true);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }}
+        onUpgrade={() => setUpgradeReason("custom_quiz")}
+      />
 
       {/* ── Picked for you — hero + alternates ─────────────────────────── */}
       {recommendedQuizzes.length > 0 && (

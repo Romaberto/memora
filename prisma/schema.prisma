@@ -43,6 +43,7 @@ model User {
   quizRequests    QuizRequest[]
   quizSessions    QuizSession[]
   topicInterests  UserTopicInterest[]
+  relatedTopicSuggestions RelatedTopicSuggestion[]
 }
 
 model QuizRequest {
@@ -107,6 +108,7 @@ model QuizSession {
   durationSeconds Int?
 
   answers QuizAnswer[]
+  relatedTopicSuggestions RelatedTopicSuggestion[] @relation("RelatedTopicSourceSession")
 
   createdAt DateTime @default(now())
 
@@ -125,6 +127,29 @@ model QuizAnswer {
   isCorrect     Boolean
 
   @@unique([quizSessionId, quizQuestionId])
+}
+
+// ─── AI follow-up topic suggestions ─────────────────────────────────────────
+
+/// Stored custom-quiz ideas generated after a completed quiz. The dashboard
+/// reads these from recent sessions instead of calling AI during page render.
+model RelatedTopicSuggestion {
+  id              String      @id @default(cuid())
+  userId          String
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceSessionId String
+  sourceSession   QuizSession @relation("RelatedTopicSourceSession", fields: [sourceSessionId], references: [id], onDelete: Cascade)
+
+  title String
+  angle String
+
+  usedAt      DateTime?
+  dismissedAt DateTime?
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, sourceSessionId, title])
+  @@index([userId, createdAt])
+  @@index([userId, sourceSessionId])
 }
 
 // ─── Pre-made topic quizzes ──────────────────────────────────────────────────

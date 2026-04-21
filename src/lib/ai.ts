@@ -24,6 +24,8 @@ export type ChatCompletionArgs = {
   jsonSchema?: JsonSchema;
   /** Override default max_tokens (default: 4000). */
   maxTokens?: number;
+  /** Override default request timeout in ms (default: 120000). */
+  timeoutMs?: number;
 };
 
 /**
@@ -70,7 +72,7 @@ class OpenAIAdapter implements AIClient {
           { role: "user", content: args.user },
         ],
       },
-      { timeout: 120_000 }, // 2-minute hard limit per call
+      { timeout: args.timeoutMs ?? 120_000 }, // 2-minute hard limit per call
     );
     const text = res.choices[0]?.message?.content;
     if (!text) throw new Error("Empty response from model");

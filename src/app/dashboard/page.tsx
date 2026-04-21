@@ -7,14 +7,22 @@ import { getRecommendedQuizzes } from "@/lib/topics";
 import { getProgressHistoryDaysForTier } from "@/lib/tiers";
 import {
   DashboardView,
+  type DashboardRelatedTopicSuggestion,
   type DashboardRequestRow,
   type DashboardSessionRow,
 } from "@/components/dashboard/dashboard-view";
 
 const nonFallbackRequest = { usedFallback: false } as const;
 
-export default async function DashboardPage() {
+type PageProps = {
+  searchParams?: {
+    customTopic?: string;
+  };
+};
+
+export default async function DashboardPage({ searchParams }: PageProps) {
   const userId = await requireUserId();
+  const initialCustomTopic = normalizeCustomTopic(searchParams?.customTopic);
 
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   const sessionHistoryWhere = { userId, quizRequest: nonFallbackRequest };
@@ -28,7 +36,7 @@ export default async function DashboardPage() {
   );
 
   // Fetch all dashboard + leaderboard data in parallel
-  const [guest, dashboardData, leaderboardEntries, recommendedQuizzes, waitlistRow] = await Promise.all([
+  const [guest, dashboardData, leaderboardEntries, recommendedQuizzes, recentTopicIdeas, waitlistRow] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId }, select: { name: true, email: true } }),
 
     Promise.all([
@@ -65,6 +73,7 @@ export default async function DashboardPage() {
     getLeaderboard("alltime", 10).catch(() => []),
     // 1 hero + 3 alternates — see RecommendedQuizzes component.
     getRecommendedQuizzes(userId, subscriptionTier, 4).catch(() => []),
+    getRecentTopicIdeas(userId).catch(() => []),
     // Waitlist status — used to switch the upsell CTA to a persistent
     // "you're on the list" state.
     prisma.waitlistSignup
@@ -128,8 +137,10 @@ export default async function DashboardPage() {
       dailyQuizCount={dailyQuizCount}
       dailyQuizLimit={getDailyLimit(subscriptionTier)}
       recommendedQuizzes={recommendedQuizzes}
+      recentTopicIdeas={recentTopicIdeas}
       userEmail={guest?.email ?? null}
       alreadyOnWaitlist={Boolean(waitlistRow)}
+      initialCustomTopic={initialCustomTopic}
       stats={{ totalSessions, avgPercentage: avgPct, sessionsLast7Days: recentCount, overallRank, avgSecondsPerQuestion, estimatedTenQuestionSeconds }}
       leaderboard={{
         entries: leaderboardEntries,
@@ -139,4 +150,70 @@ export default async function DashboardPage() {
       }}
     />
   );
+}
+
+async function getRecentTopicIdeas(
+  userId: string,
+): Promise<DashboardRelatedTopicSuggestion[]> {
+  const recentSessions = await prisma.quizSession.findMany({
+    where: { userId, quizRequest: nonFallbackRequest },
+    orderBy: { createdAt: "desc" },
+    take: 5,
+    select: { id: true },
+  });
+  const sessionIds = recentSessions.map((session) => session.id);
+  if (sessionIds.length === 0) return [];
+
+  const rows = await prisma.relatedTopicSuggestion.findMany({
+    where: {
+      userId,
+      dismissedAt: null,
+      sourceSessionId: { in: sessionIds },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+    select: {
+      id: true,
+      title: true,
+      angle: true,
+      createdAt: true,
+      sourceSession: {
+        select: {
+          createdAt: true,
+          quizRequest: {
+            select: {
+              title: true,
+              topic: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  const seen = new Set<string>();
+  const ideas: DashboardRelatedTopicSuggestion[] = [];
+  for (const row of rows) {
+    const key = row.title.trim().toLowerCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    ideas.push({
+      id: row.id,
+      title: row.title,
+      angle: row.angle,
+      sourceTitle: row.sourceSession.quizRequest.title ?? row.sourceSession.quizRequest.topic,
+      sourceCreatedAt: row.sourceSession.createdAt.toISOString(),
+      createdAt: row.createdAt.toISOString(),
+    });
+    if (ideas.length >= 5) break;
+  }
+
+  return ideas;
+}
+
+function normalizeCustomTopic(value: string | undefined): string | null {
+  if (!value) return null;
+  const trimmed = value.replace(/\s+/g, " ").trim();
+  if (!trimmed) return null;
+  return trimmed.slice(0, 140);
 }

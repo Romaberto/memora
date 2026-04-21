@@ -64,6 +64,7 @@ function makeLimiter(purpose: string, requests: number, window: `${number} ${"s"
 }
 
 let _generateQuizLimiter: Ratelimit | null | undefined;
+let _relatedTopicsLimiter: Ratelimit | null | undefined;
 let _googleAuthLimiter: Ratelimit | null | undefined;
 let _authLimiter: Ratelimit | null | undefined;
 let _contactLimiter: Ratelimit | null | undefined;
@@ -75,6 +76,15 @@ function generateQuizLimiter(): Ratelimit | null {
     _generateQuizLimiter = makeLimiter("gen", 5, "1 m");
   }
   return _generateQuizLimiter;
+}
+
+function relatedTopicsLimiter(): Ratelimit | null {
+  if (_relatedTopicsLimiter === undefined) {
+    // Lightweight model call after a completed quiz. Separate bucket from
+    // full quiz generation so result-page refreshes don't block creation.
+    _relatedTopicsLimiter = makeLimiter("related_topics", 10, "1 m");
+  }
+  return _relatedTopicsLimiter;
 }
 
 function googleAuthLimiter(): Ratelimit | null {
@@ -120,6 +130,10 @@ async function check(limiter: Ratelimit | null, key: string): Promise<RateLimitR
 
 export function ratelimitGenerateQuiz(key: string): Promise<RateLimitResult> {
   return check(generateQuizLimiter(), key);
+}
+
+export function ratelimitRelatedTopics(key: string): Promise<RateLimitResult> {
+  return check(relatedTopicsLimiter(), key);
 }
 
 export function ratelimitGoogleAuth(key: string): Promise<RateLimitResult> {
