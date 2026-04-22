@@ -50,6 +50,150 @@ function progressMilestoneToast(answered: number, total: number): string | null 
   return null;
 }
 
+function connectionBudget(total: number): number {
+  if (total <= 10) return 10;
+  if (total <= 20) return 12;
+  if (total <= 30) return 14;
+  if (total <= 40) return 16;
+  return 18;
+}
+
+function MemoryNetwork({
+  built,
+  total,
+  streak,
+}: {
+  built: number;
+  total: number;
+  streak: number;
+}) {
+  const nodePoints = [
+    { x: 9, y: 28 },
+    { x: 18, y: 12 },
+    { x: 29, y: 34 },
+    { x: 39, y: 18 },
+    { x: 51, y: 30 },
+    { x: 62, y: 10 },
+    { x: 73, y: 26 },
+    { x: 84, y: 16 },
+    { x: 92, y: 34 },
+    { x: 104, y: 22 },
+  ];
+  const links = [
+    [0, 1],
+    [0, 2],
+    [1, 3],
+    [2, 3],
+    [2, 4],
+    [3, 5],
+    [3, 4],
+    [4, 6],
+    [5, 6],
+    [5, 7],
+    [6, 8],
+    [7, 9],
+    [8, 9],
+    [1, 2],
+    [4, 5],
+    [6, 7],
+    [3, 6],
+    [0, 3],
+  ] as const;
+  const visibleLinks = links.slice(0, connectionBudget(total));
+  const activeLinks =
+    total > 0
+      ? Math.min(visibleLinks.length, Math.ceil((built / total) * visibleLinks.length))
+      : 0;
+  const activeNodes = new Set<number>();
+  visibleLinks.slice(0, activeLinks).forEach(([from, to]) => {
+    activeNodes.add(from);
+    activeNodes.add(to);
+  });
+  if (built > 0) activeNodes.add(0);
+  const progressLabel =
+    total > 0 ? `${built}/${total} correct answers connected` : "No connections yet";
+  const activeColor = streak >= 3 ? "#f59e0b" : "#10b981";
+  const quietColor = "#d8e2ea";
+
+  return (
+    <div
+      className="flex shrink-0 items-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50/70 px-2.5 py-1.5"
+      aria-label={`Memory network: ${progressLabel}`}
+      title={`Memory network: ${progressLabel}`}
+    >
+      <svg
+        viewBox="0 0 112 44"
+        className="h-10 w-24"
+        aria-hidden
+        focusable="false"
+      >
+        <defs>
+          <filter id="memory-network-glow" x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur stdDeviation="2.2" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+        {visibleLinks.map(([from, to], index) => {
+          const active = index < activeLinks;
+          const a = nodePoints[from]!;
+          const b = nodePoints[to]!;
+          return (
+            <motion.line
+              key={`${from}-${to}`}
+              x1={a.x}
+              y1={a.y}
+              x2={b.x}
+              y2={b.y}
+              initial={false}
+              animate={{
+                opacity: active ? 1 : 0.34,
+                pathLength: active ? 1 : 0,
+              }}
+              transition={{ duration: 0.32, ease: EASE_OUT }}
+              stroke={active ? activeColor : quietColor}
+              strokeWidth={active ? 2.4 : 1.4}
+              strokeLinecap="round"
+              filter={active && streak >= 3 ? "url(#memory-network-glow)" : undefined}
+            />
+          );
+        })}
+        {nodePoints.map((point, index) => {
+          const active = activeNodes.has(index);
+          const latest = built > 0 && active && index === Array.from(activeNodes).at(-1);
+          return (
+            <motion.circle
+              key={index}
+              cx={point.x}
+              cy={point.y}
+              r={active ? 3.6 : 2.8}
+              initial={false}
+              animate={{
+                opacity: active ? 1 : 0.42,
+                scale: latest ? [1, 1.28, 1] : 1,
+              }}
+              transition={{ duration: 0.28, ease: EASE_OUT }}
+              fill={active ? activeColor : "#ffffff"}
+              stroke={active ? "#047857" : quietColor}
+              strokeWidth={active ? 1.2 : 1}
+            />
+          );
+        })}
+      </svg>
+      <div className="hidden leading-tight sm:block">
+        <p className="text-[10px] font-bold uppercase tracking-wide text-emerald-700">
+          Network
+        </p>
+        <p className="text-[10px] font-semibold text-[rgb(var(--muted))]">
+          {activeLinks}/{visibleLinks.length}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 type Props = {
   initialQuizRequestId: string;
   topic: string;
@@ -155,6 +299,15 @@ export function QuizExperience({
   const answeredCount = Object.keys(committed).length + (locked ? 1 : 0);
   const answeredProgress = total > 0 ? answeredCount / total : 0;
   const currentTimedOut = picked === TIMEOUT_INDEX;
+  const committedCorrectCount = questions.reduce(
+    (count, qq) => count + (committed[qq.id] === qq.correctIndex ? 1 : 0),
+    0,
+  );
+  const currentCorrectCount =
+    locked && q && committed[q.id] === undefined && picked === q.correctIndex
+      ? 1
+      : 0;
+  const memoryBuiltCount = committedCorrectCount + currentCorrectCount;
   const milestoneStatus =
     streak >= 5
       ? "2x streak active"
@@ -752,19 +905,22 @@ export function QuizExperience({
         </div>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-wide text-[rgb(var(--muted))]">
           <span>{milestoneStatus}</span>
-          <div className="flex items-center gap-2" aria-label="Quiz checkpoints">
-            {[25, 50, 75, 100].map((mark) => {
-              const reached = answeredProgress * 100 >= mark;
-              return (
-                <span
-                  key={mark}
-                  className={`h-2 w-2 rounded-full transition-colors ${
-                    reached ? "bg-accent" : "bg-slate-200"
-                  }`}
-                  title={`${mark}% checkpoint`}
-                />
-              );
-            })}
+          <div className="flex items-center gap-3">
+            <MemoryNetwork built={memoryBuiltCount} total={total} streak={streak} />
+            <div className="flex items-center gap-2" aria-label="Quiz checkpoints">
+              {[25, 50, 75, 100].map((mark) => {
+                const reached = answeredProgress * 100 >= mark;
+                return (
+                  <span
+                    key={mark}
+                    className={`h-2 w-2 rounded-full transition-colors ${
+                      reached ? "bg-accent" : "bg-slate-200"
+                    }`}
+                    title={`${mark}% checkpoint`}
+                  />
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
