@@ -25,11 +25,28 @@ export type QuizQuestionClient = {
 };
 
 const EASE_OUT = [0.23, 1, 0.32, 1] as const;
+const TIMEOUT_INDEX = -1;
+
+function questionTimeLimitSeconds(q: QuizQuestionClient): number {
+  const textLength = `${q.question} ${q.options.join(" ")}`.length;
+  if (textLength > 520) return 30;
+  if (textLength > 360) return 25;
+  return 20;
+}
 
 function streakMilestoneToast(nextStreak: number): string | null {
   if (nextStreak === 3) return "🔥 3 in a row!";
   if (nextStreak === 5) return "⚡ 5 streak · 2× points!";
   if (nextStreak === 10) return "🏆 10 streak · on fire!";
+  return null;
+}
+
+function progressMilestoneToast(answered: number, total: number): string | null {
+  if (total <= 1) return null;
+  const progress = answered / total;
+  if (progress >= 0.75) return "Final stretch. Keep the chain steady.";
+  if (progress >= 0.5) return "Halfway there. Nice rhythm.";
+  if (progress >= 0.25) return "First checkpoint reached.";
   return null;
 }
 
@@ -51,6 +68,19 @@ type ResultPayload = {
   message: string;
   streakMax: number;
   durationSeconds?: number | null;
+  leaguePromotion?: {
+    previous: {
+      name: string;
+      icon: string;
+      minPoints: number;
+    };
+    current: {
+      name: string;
+      icon: string;
+      minPoints: number;
+    };
+    totalPoints: number;
+  } | null;
 };
 
 export function QuizExperience({
@@ -66,8 +96,9 @@ export function QuizExperience({
   const sessionShuffleKeyRef = useRef(0);
   const displayToOriginalRef = useRef<Record<string, number[]>>({});
   const canonicalQuestionsRef = useRef<QuizQuestionClient[]>(initialQuestions);
-  const quizClockStartRef = useRef(Date.now());
+  const activeElapsedSecRef = useRef(0);
   const submittingRef = useRef(false);
+  const shownProgressMilestonesRef = useRef<Set<number>>(new Set());
 
   function prepareQuestionsFromRaw(raw: QuizQuestionClient[]): QuizQuestionClient[] {
     const k = sessionShuffleKeyRef.current;
@@ -97,12 +128,14 @@ export function QuizExperience({
   const [maxStreak, setMaxStreak] = useState(0);
   const [wrongIds, setWrongIds] = useState<string[]>([]);
   const [elapsedSec, setElapsedSec] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(20);
 
   const [phase, setPhase] = useState<"take" | "results">("take");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [result, setResult] = useState<ResultPayload | null>(null);
   const [regenLoading, setRegenLoading] = useState(false);
+  const [leagueModalDismissed, setLeagueModalDismissed] = useState(false);
 
   // Entertainment state
   const [lastGain, setLastGain] = useState<number | null>(null);
@@ -116,15 +149,74 @@ export function QuizExperience({
 
   const total = questions.length;
   const q = questions[idx];
+  const questionTimeLimit = q ? questionTimeLimitSeconds(q) : 20;
+  const timerProgress = questionTimeLimit > 0 ? timeLeft / questionTimeLimit : 0;
+  const timerUrgent = timeLeft <= 5;
+  const answeredCount = Object.keys(committed).length + (locked ? 1 : 0);
+  const answeredProgress = total > 0 ? answeredCount / total : 0;
+  const currentTimedOut = picked === TIMEOUT_INDEX;
+  const milestoneStatus =
+    streak >= 5
+      ? "2x streak active"
+      : streak >= 3
+        ? `${5 - streak} more to 2x`
+        : streak > 0
+          ? `${3 - streak} more to bonus`
+          : answeredCount >= Math.ceil(total * 0.75)
+            ? "final stretch"
+            : answeredCount >= Math.ceil(total * 0.5)
+              ? "halfway checkpoint"
+              : "build the chain";
 
-  // ── timer ─────────────────────────────────────────────────────────────────
+  // ── timers ────────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (phase !== "take") return;
+    if (phase !== "take" || !q) return;
+    setTimeLeft(questionTimeLimit);
+  }, [phase, q, questionTimeLimit]);
+
+  useEffect(() => {
+    if (phase !== "take" || locked) return;
     const id = window.setInterval(() => {
-      setElapsedSec(Math.floor((Date.now() - quizClockStartRef.current) / 1000));
+      activeElapsedSecRef.current += 1;
+      setElapsedSec(activeElapsedSecRef.current);
     }, 1000);
     return () => window.clearInterval(id);
-  }, [phase]);
+  }, [phase, locked]);
+
+  useEffect(() => {
+    if (phase !== "take" || locked || !q) return;
+    const id = window.setInterval(() => {
+      setTimeLeft((current) => Math.max(0, current - 1));
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [phase, locked, q]);
+
+  useEffect(() => {
+    if (phase !== "take" || locked || !q || timeLeft > 0) return;
+    setPicked(TIMEOUT_INDEX);
+    setLocked(true);
+    setStreak(0);
+    setLastGain(null);
+    setLastBonus(0);
+    setWrongIds((w) => (w.includes(q.id) ? w : [...w, q.id]));
+    const answered = Object.keys(committed).length + 1;
+    const toast = progressMilestoneToast(answered, total);
+    if (toast) {
+      const threshold = answered / total >= 0.75 ? 75 : answered / total >= 0.5 ? 50 : 25;
+      if (!shownProgressMilestonesRef.current.has(threshold)) {
+        shownProgressMilestonesRef.current.add(threshold);
+        setStreakToast(toast);
+        if (streakToastTimer.current != null) clearTimeout(streakToastTimer.current);
+        streakToastTimer.current = window.setTimeout(() => setStreakToast(null), 2000);
+      }
+    }
+    if (!reduceMotion) {
+      void shakeControls.start({
+        x: [0, -8, 8, -6, 6, -3, 3, 0],
+        transition: { duration: 0.42, ease: EASE_OUT },
+      });
+    }
+  }, [committed, locked, phase, q, reduceMotion, shakeControls, timeLeft, total]);
 
   // ── dot progress state ────────────────────────────────────────────────────
   type DotState = "correct" | "wrong" | "current" | "pending";
@@ -160,21 +252,39 @@ export function QuizExperience({
     setSaving(false);
     setSaveError(null);
     setResult(null);
+    setLeagueModalDismissed(false);
     setLastGain(null);
     setLastBonus(0);
     setBurstCount(0);
     setStreakToast(null);
     submittingRef.current = false;
-    quizClockStartRef.current = Date.now();
+    shownProgressMilestonesRef.current.clear();
+    activeElapsedSecRef.current = 0;
     setElapsedSec(0);
+    setTimeLeft(nextQuestions[0] ? questionTimeLimitSeconds(nextQuestions[0]) : 20);
   }
 
   // ── answer picking ────────────────────────────────────────────────────────
-  function pickOption(i: number) {
+  function showRunToast(message: string) {
+    setStreakToast(message);
+    if (streakToastTimer.current != null) clearTimeout(streakToastTimer.current);
+    streakToastTimer.current = window.setTimeout(() => setStreakToast(null), 2000);
+  }
+
+  function maybeProgressToast(answered: number): string | null {
+    const ratio = total > 0 ? answered / total : 0;
+    const threshold = ratio >= 0.75 ? 75 : ratio >= 0.5 ? 50 : ratio >= 0.25 ? 25 : 0;
+    if (threshold === 0 || shownProgressMilestonesRef.current.has(threshold)) return null;
+    shownProgressMilestonesRef.current.add(threshold);
+    return progressMilestoneToast(answered, total);
+  }
+
+  function resolveAnswer(i: number) {
     if (locked || phase !== "take" || !q) return;
     setPicked(i);
     setLocked(true);
     const correct = i === q.correctIndex;
+    const answered = Object.keys(committed).length + 1;
 
     if (correct) {
       const nextStreak = streak + 1;
@@ -189,15 +299,18 @@ export function QuizExperience({
 
       const toast = streakMilestoneToast(nextStreak);
       if (toast) {
-        setStreakToast(toast);
-        if (streakToastTimer.current != null) clearTimeout(streakToastTimer.current);
-        streakToastTimer.current = window.setTimeout(() => setStreakToast(null), 2000);
+        showRunToast(toast);
+      } else {
+        const progressToast = maybeProgressToast(answered);
+        if (progressToast) showRunToast(progressToast);
       }
     } else {
       setStreak(0);
       setLastGain(null);
       setLastBonus(0);
       setWrongIds((w) => (w.includes(q.id) ? w : [...w, q.id]));
+      const progressToast = maybeProgressToast(answered);
+      if (progressToast) showRunToast(progressToast);
       if (!reduceMotion) {
         void shakeControls.start({
           x: [0, -8, 8, -6, 6, -3, 3, 0],
@@ -207,6 +320,10 @@ export function QuizExperience({
     }
   }
 
+  function pickOption(i: number) {
+    resolveAnswer(i);
+  }
+
   // ── submit ────────────────────────────────────────────────────────────────
   async function submitAnswers(full: Record<string, number>) {
     if (submittingRef.current) return;
@@ -214,7 +331,7 @@ export function QuizExperience({
     setSaving(true);
     setSaveError(null);
     try {
-      const durationSeconds = Math.max(1, Math.floor((Date.now() - quizClockStartRef.current) / 1000));
+      const durationSeconds = Math.max(1, activeElapsedSecRef.current);
       const map = displayToOriginalRef.current;
       const res = await fetch("/api/quiz/complete", {
         method: "POST",
@@ -224,6 +341,9 @@ export function QuizExperience({
           durationSeconds,
           answers: questions.map((qq) => {
             const displayIdx = full[qq.id]!;
+            if (displayIdx === TIMEOUT_INDEX) {
+              return { quizQuestionId: qq.id, selectedIndex: TIMEOUT_INDEX };
+            }
             const perm = map[qq.id];
             const storedIdx = perm && perm.length > 0 ? perm[displayIdx]! : displayIdx;
             return { quizQuestionId: qq.id, selectedIndex: storedIdx };
@@ -289,6 +409,12 @@ export function QuizExperience({
     return () => window.removeEventListener("keydown", listener);
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (streakToastTimer.current != null) clearTimeout(streakToastTimer.current);
+    };
+  }, []);
+
   // ── regenerate ────────────────────────────────────────────────────────────
   async function handleRegenerate() {
     setRegenLoading(true);
@@ -339,6 +465,7 @@ export function QuizExperience({
     const displayRank = result.rankName || rankFromPercentage(localPct);
     const displayMsg = result.message || encouragingMessage(localPct);
     const isWin = localPct >= 80;
+    const promotion = result.leaguePromotion;
 
     const containerVariants = {
       hidden: { opacity: 0 },
@@ -354,6 +481,58 @@ export function QuizExperience({
 
     return (
       <div className="mx-auto max-w-2xl space-y-6 py-4">
+        <AnimatePresence>
+          {promotion && !leagueModalDismissed ? (
+            <motion.div
+              className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/35 px-4 backdrop-blur-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="league-promotion-title"
+            >
+              <motion.div
+                initial={{ opacity: 0, y: 18, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 12, scale: 0.98 }}
+                transition={{ duration: 0.22, ease: EASE_OUT }}
+                className="relative w-full max-w-sm overflow-hidden rounded-2xl border border-emerald-200 bg-white p-6 text-center shadow-2xl"
+              >
+                <Confetti trigger={1} variant="celebration" />
+                <p className="text-xs font-bold uppercase tracking-[0.24em] text-accent">
+                  New league
+                </p>
+                <h2 id="league-promotion-title" className="mt-3 text-3xl font-extrabold">
+                  {promotion.current.icon} {promotion.current.name}
+                </h2>
+                <p className="mt-3 text-sm leading-relaxed text-[rgb(var(--muted))]">
+                  You moved up from {promotion.previous.name} with{" "}
+                  <span className="font-bold text-[rgb(var(--foreground))]">
+                    {promotion.totalPoints.toLocaleString()} pts
+                  </span>
+                  .
+                </p>
+                <div className="mt-6 grid gap-2">
+                  <Link href="/leaderboard">
+                    <Button type="button" className="w-full">
+                      View leaderboard
+                    </Button>
+                  </Link>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="w-full"
+                    onClick={() => setLeagueModalDismissed(true)}
+                  >
+                    Continue
+                  </Button>
+                </div>
+              </motion.div>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+
         <div className="relative">
           {isWin ? <Confetti trigger={1} variant="celebration" /> : null}
 
@@ -487,6 +666,30 @@ export function QuizExperience({
           </div>
 
           <div className="flex items-center gap-3 sm:gap-4">
+            <div
+              className={`min-w-[76px] overflow-hidden rounded-xl border text-center shadow-sm transition-colors ${
+                timerUrgent && !locked
+                  ? "border-rose-200 bg-rose-50 text-rose-700"
+                  : "border-emerald-100 bg-emerald-50 text-emerald-700"
+              }`}
+              aria-label={`${timeLeft} seconds left for this question`}
+            >
+              <div
+                className={`h-1 transition-[width,background-color] duration-300 ${
+                  timerUrgent && !locked ? "bg-rose-400" : "bg-emerald-400"
+                }`}
+                style={{ width: `${Math.max(0, Math.min(1, timerProgress)) * 100}%` }}
+              />
+              <div className="px-2 py-1">
+                <p className="font-mono text-base font-extrabold tabular-nums leading-none">
+                  {timeLeft}s
+                </p>
+                <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wide opacity-70">
+                  {locked ? "paused" : "focus"}
+                </p>
+              </div>
+            </div>
+
             {/* Streak pill */}
             <AnimatePresence>
               {streak >= 2 && (
@@ -525,7 +728,7 @@ export function QuizExperience({
               <p className="font-mono text-lg font-bold tabular-nums leading-none text-[rgb(var(--foreground))]">
                 {formatQuizClock(elapsedSec)}
               </p>
-              <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wide text-[rgb(var(--muted))]">time</p>
+              <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wide text-[rgb(var(--muted))]">active</p>
             </div>
           </div>
         </div>
@@ -546,6 +749,23 @@ export function QuizExperience({
               }`}
             />
           ))}
+        </div>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-wide text-[rgb(var(--muted))]">
+          <span>{milestoneStatus}</span>
+          <div className="flex items-center gap-2" aria-label="Quiz checkpoints">
+            {[25, 50, 75, 100].map((mark) => {
+              const reached = answeredProgress * 100 >= mark;
+              return (
+                <span
+                  key={mark}
+                  className={`h-2 w-2 rounded-full transition-colors ${
+                    reached ? "bg-accent" : "bg-slate-200"
+                  }`}
+                  title={`${mark}% checkpoint`}
+                />
+              );
+            })}
+          </div>
         </div>
       </div>
 
@@ -629,7 +849,7 @@ export function QuizExperience({
                           picked === q.correctIndex ? "text-emerald-600" : "text-rose-600"
                         }`}
                       >
-                        {picked === q.correctIndex ? "Correct!" : "Incorrect"}
+                        {picked === q.correctIndex ? "Correct!" : currentTimedOut ? "Time's up" : "Incorrect"}
                       </span>
                       {lastGain !== null ? (
                         <motion.span
@@ -674,6 +894,10 @@ export function QuizExperience({
                           🔥 {3 - streak} more correct in a row → <span className="font-bold">+5 streak bonus</span>
                         </p>
                       ) : null
+                    ) : currentTimedOut ? (
+                      <p className="mt-1.5 text-[11px] font-medium text-rose-600">
+                        Timer paused. Read the explanation, then continue when ready.
+                      </p>
                     ) : (
                       streak === 0 && maxStreak >= 3 ? (
                         <p className="mt-1.5 text-[11px] font-medium text-rose-600">

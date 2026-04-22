@@ -52,7 +52,8 @@ export const completeQuizBodySchema = z.object({
   answers: z.array(
     z.object({
       quizQuestionId: z.string().min(1),
-      selectedIndex: z.number().int().min(0).max(3),
+      // -1 means the question timed out / was skipped.
+      selectedIndex: z.number().int().min(-1).max(3),
     }),
   ),
 });

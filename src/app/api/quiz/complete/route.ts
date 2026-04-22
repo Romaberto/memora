@@ -4,6 +4,7 @@ import { getSessionUserId } from "@/lib/auth";
 import { completeQuizBodySchema } from "@/lib/schemas/quiz";
 import { encouragingMessage, rankFromPercentage } from "@/lib/ranks";
 import { computeStreakScore } from "@/lib/scoring";
+import { getLeague } from "@/lib/leagues";
 
 export async function POST(req: Request) {
   const userId = await getSessionUserId();
@@ -95,6 +96,29 @@ export async function POST(req: Request) {
   const total = request.questions.length;
   const percentage = total === 0 ? 0 : Math.round((correct / total) * 10000) / 100;
   const rankName = rankFromPercentage(percentage);
+  const previousPointsResult = await prisma.quizSession.aggregate({
+    where: { userId },
+    _sum: { score: true },
+  });
+  const previousTotalPoints = previousPointsResult._sum.score ?? 0;
+  const previousLeague = getLeague(previousTotalPoints);
+  const currentLeague = getLeague(previousTotalPoints + score);
+  const leaguePromotion =
+    previousLeague.name !== currentLeague.name
+      ? {
+          previous: {
+            name: previousLeague.name,
+            icon: previousLeague.icon,
+            minPoints: previousLeague.minPoints,
+          },
+          current: {
+            name: currentLeague.name,
+            icon: currentLeague.icon,
+            minPoints: currentLeague.minPoints,
+          },
+          totalPoints: previousTotalPoints + score,
+        }
+      : null;
 
   const quizSession = await prisma.quizSession.create({
     data: {
@@ -137,5 +161,6 @@ export async function POST(req: Request) {
     message: encouragingMessage(percentage),
     streakMax,
     durationSeconds: quizSession.durationSeconds,
+    leaguePromotion,
   });
 }

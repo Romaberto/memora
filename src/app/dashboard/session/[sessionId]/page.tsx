@@ -109,6 +109,11 @@ export default async function SessionReviewPage({ params }: PageProps) {
                   </p>
                   <p className="mt-1 font-medium">{q.question}</p>
                   <ul className="mt-3 space-y-1 text-sm">
+                    {a.selectedIndex < 0 ? (
+                      <li className="rounded-lg bg-rose-50 px-2 py-1 text-rose-900 dark:bg-rose-950/40 dark:text-rose-100">
+                        Timed out before an answer was selected.
+                      </li>
+                    ) : null}
                     {opts.map((opt, j) => {
                       const isCorrect = j === q.correctIndex;
                       const picked = j === a.selectedIndex;
