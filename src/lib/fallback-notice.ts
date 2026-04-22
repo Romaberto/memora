@@ -16,6 +16,8 @@ export function describeFallbackReason(reason?: string): string {
       return "The model returned the wrong number of questions. Try again or a different model.";
     case "duplicate_options":
       return "A question had duplicate answer options. Try generating again.";
+    case "repetitive_questions":
+      return "The model repeated too many question ideas. Try generating again with a narrower source or a smaller quiz size.";
     default:
       return "A built-in sample quiz was used instead of AI. Set OPENAI_API_KEY in memorize/.env, restart npm run dev, and generate again.";
   }

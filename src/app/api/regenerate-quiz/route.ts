@@ -8,6 +8,9 @@ import { isQuestionCount } from "@/lib/schemas/quiz";
 import { ratelimitGenerateQuiz } from "@/lib/rate-limit";
 import { canGenerateQuiz, createQuizRequestWithQuota, QuotaExceededError } from "@/lib/subscription";
 
+export const runtime = "nodejs";
+export const maxDuration = 120;
+
 const bodySchema = z.object({
   fromQuizRequestId: z.string().min(1),
 });

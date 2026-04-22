@@ -99,6 +99,9 @@ OUTPUT RULES (STRICT):
 - Options must be mutually exclusive, parallel in style, and similar length (no giveaway phrasing).
 - Questions should be fact-based, clear, and suitable for learning reinforcement — not trivia tricks, not impossibly hard.
 - QUESTION STEMS (READ CAREFULLY): Each "question" string must be self-contained and unambiguous. Name the specific concept, claim, entity, or chapter-level idea being tested (e.g. start with the topic or theory). Do NOT use vague stems like "Which is true?" or "What does it suggest?" without stating what "it" refers to. Avoid bare pronouns ("this", "it", "they") unless the referent is in the same sentence. Use one or two full sentences if needed so the learner knows exactly what dimension they are judging (definition, mechanism, implication, contrast, etc.).
+- DUPLICATE CONTROL (CRITICAL FOR LARGE QUIZZES): Every question must test a distinct target fact, relationship, example, mechanism, implication, or contrast. Do NOT create multiple questions that are paraphrases of the same idea. Do NOT reuse the same correct answer in slightly different wording. Do NOT repeat the same generic stem pattern more than a few times.
+- For quizzes with 30, 40, or 50 questions, privately create a coverage plan before writing JSON. Spread questions across different angles: definitions, mechanisms, cause/effect, comparisons, examples, exceptions, chronology/sequence, application scenarios, misconceptions, consequences, and synthesis. The final JSON should contain only the quiz, not the plan.
+- Long quizzes should feel like a broad study session, not the same 5-7 questions rewritten. If the source is narrow, vary the level of analysis instead of repeating the same surface fact.
 - Use neutral, precise wording. Avoid "all of the above" / "none of the above".
 - If the user supplies substantive text (summary and/or notes), base questions ONLY on that material.
 - If the user provides ONLY a title/name with little or no substantive text, you may use general, widely accepted knowledge about that source IF it is a well-known public work or topic; otherwise keep questions conservative and tied to any hints given.
@@ -109,6 +112,45 @@ QUALITY BAR:
 - Vary difficulty slightly across the set, but keep every item fair and clearly answerable from the allowed knowledge.
 - Order questions so difficulty tends to increase from the start of the array toward the end (early items slightly easier, later items slightly harder), without making any item unfair.
 - Explanations should reinforce the correct idea without introducing new unrelated claims.`;
+
+function buildCoveragePlan(n: QuestionCount): string {
+  if (n <= 10) {
+    return [
+      "COVERAGE PLAN:",
+      "- Use 10 distinct learning targets. Avoid asking the same fact twice.",
+      "- Mix direct recall with at least a few application or contrast questions.",
+    ].join("\n");
+  }
+
+  const bands =
+    n >= 50
+      ? [
+          "1-5: core definitions and key claims",
+          "6-10: mechanisms, processes, or how-things-work questions",
+          "11-15: cause/effect and consequence questions",
+          "16-20: comparisons and contrasts between concepts",
+          "21-25: examples, applications, and scenario-based recall",
+          "26-30: misconceptions, edge cases, and exceptions",
+          "31-35: chronology, sequence, or structure where relevant",
+          "36-40: deeper implications and tradeoffs",
+          "41-45: synthesis across multiple parts of the source",
+          "46-50: harder but fair review questions with distinct targets",
+        ]
+      : [
+          "First quarter: core definitions and key claims",
+          "Second quarter: mechanisms, cause/effect, and examples",
+          "Third quarter: comparisons, applications, and misconceptions",
+          "Final quarter: synthesis, implications, and harder review questions",
+        ];
+
+  return [
+    "COVERAGE PLAN FOR THIS QUIZ:",
+    `- Create exactly ${n} distinct target facts before writing questions.`,
+    "- Map each question to one target fact. No target fact may be reused.",
+    "- Avoid repeating the same stem template across the set.",
+    ...bands.map((band) => `- ${band}`),
+  ].join("\n");
+}
 
 function buildSourceInputBlock(input: {
   title?: string | null;
@@ -143,6 +185,8 @@ function buildUserPrompt(input: {
     "",
     `Generate a quiz with EXACTLY ${n} multiple-choice questions.`,
     "",
+    buildCoveragePlan(n),
+    "",
     buildSourceInputBlock(input),
     "",
     `FINAL REMINDER: Your output MUST contain exactly ${n} questions. Count them before responding.`,
@@ -168,32 +212,167 @@ function normalizeIds(payload: QuizPayload): QuizPayload {
   };
 }
 
-// With OpenAI structured outputs, JSON / shape errors are no longer possible,
-// so the only failure modes left are network errors and the model returning
-// the wrong number of questions. 3 attempts with top-up covers edge cases.
+// With OpenAI structured outputs, JSON / shape errors are rare, but content
+// quality still needs a local gate. 3 attempts with top-up covers edge cases
+// without turning quiz generation into a long-running repair loop.
 const QUIZ_MAX_ATTEMPTS = 3;
 
 const TOP_UP_SYSTEM_PROMPT = `You add questions to an existing multiple-choice quiz. Output one JSON object only (no markdown, no code fences).
 Shape: { "questions": [ ... ] } — nothing else at the top level.
 Each question: id (UUID string), question, options (EXACTLY 4 distinct strings), correctIndex (0–3), explanation (brief).
 Each "question" stem must name the specific idea being tested (no vague "which is true?" without context; no unclear "it/this").
+Every new question must test a distinct target fact. Do not paraphrase existing questions. Do not reuse the same correct answer with a lightly rewritten stem.
 The user states how many items must appear in "questions"; that length must match exactly.`;
 
 const topUpPayloadSchema = z.object({
   questions: z.array(quizQuestionSchema),
 });
 
+const QUESTION_STOP_WORDS = new Set([
+  "about",
+  "above",
+  "according",
+  "after",
+  "again",
+  "against",
+  "also",
+  "among",
+  "answer",
+  "because",
+  "before",
+  "being",
+  "best",
+  "between",
+  "could",
+  "describe",
+  "describes",
+  "does",
+  "during",
+  "each",
+  "from",
+  "given",
+  "have",
+  "how",
+  "into",
+  "main",
+  "most",
+  "question",
+  "rather",
+  "should",
+  "statement",
+  "suggest",
+  "suggests",
+  "than",
+  "that",
+  "their",
+  "there",
+  "these",
+  "they",
+  "this",
+  "true",
+  "what",
+  "when",
+  "where",
+  "which",
+  "while",
+  "why",
+  "with",
+  "who",
+  "would",
+]);
+
+const NON_WORD_OR_SPACE = new RegExp("[^\\p{L}\\p{N}\\s]", "gu");
+
+function normalizeQuestionText(value: string): string {
+  return value
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(NON_WORD_OR_SPACE, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function questionKeywordTokens(value: string): Set<string> {
+  const tokens = normalizeQuestionText(value)
+    .split(" ")
+    .filter((token) => token.length >= 3 && !QUESTION_STOP_WORDS.has(token))
+    .map((token) =>
+      token
+        .replace(/(?:ing|tion|ions|ed|es|s)$/, "")
+        .replace(/^\d+$/, ""),
+    )
+    .filter((token) => token.length >= 3 && !QUESTION_STOP_WORDS.has(token));
+  return new Set(tokens);
+}
+
+function jaccardSimilarity(a: Set<string>, b: Set<string>): number {
+  if (a.size === 0 || b.size === 0) return 0;
+  let intersection = 0;
+  a.forEach((token) => {
+    if (b.has(token)) intersection++;
+  });
+  const union = a.size + b.size - intersection;
+  return union === 0 ? 0 : intersection / union;
+}
+
+function overlapSimilarity(a: Set<string>, b: Set<string>): number {
+  const smaller = Math.min(a.size, b.size);
+  if (smaller === 0) return 0;
+  let intersection = 0;
+  a.forEach((token) => {
+    if (b.has(token)) intersection++;
+  });
+  return intersection / smaller;
+}
+
+function questionsAreTooSimilar(
+  a: QuizPayload["questions"][number],
+  b: QuizPayload["questions"][number],
+): boolean {
+  const aText = normalizeQuestionText(a.question);
+  const bText = normalizeQuestionText(b.question);
+  if (aText === bText) return true;
+
+  const aTokens = questionKeywordTokens(a.question);
+  const bTokens = questionKeywordTokens(b.question);
+  const jaccard = jaccardSimilarity(aTokens, bTokens);
+  const overlap = overlapSimilarity(aTokens, bTokens);
+
+  // Jaccard catches paraphrases with near-identical keyword sets. Overlap
+  // catches "same question plus one clause" variants without punishing broad
+  // quizzes where several stems naturally share the source/topic name.
+  return jaccard >= 0.72 || (overlap >= 0.88 && jaccard >= 0.58);
+}
+
+function dedupeSimilarQuestions(
+  questions: QuizPayload["questions"],
+): {
+  questions: QuizPayload["questions"];
+  removedCount: number;
+} {
+  const out: QuizPayload["questions"] = [];
+  for (const question of questions) {
+    if (out.some((existing) => questionsAreTooSimilar(existing, question))) {
+      continue;
+    }
+    out.push(question);
+  }
+  return {
+    questions: out,
+    removedCount: questions.length - out.length,
+  };
+}
+
 function mergeAppendedQuestions(
   existing: QuizPayload["questions"],
   incoming: QuizPayload["questions"],
   cap: number,
 ): QuizPayload["questions"] {
-  const seen = new Set(existing.map((q) => q.question.trim().toLowerCase()));
   const out = [...existing];
   for (const q of incoming) {
-    const key = q.question.trim().toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
+    if (out.some((existingQuestion) => questionsAreTooSimilar(existingQuestion, q))) {
+      continue;
+    }
     out.push({ ...q, id: q.id?.trim() ? q.id : randomUUID() });
     if (out.length >= cap) break;
   }
@@ -220,12 +399,12 @@ async function tryTopUpToCount(
   for (let round = 0; round < maxRounds && questions.length < n; round++) {
     const need = n - questions.length;
     const previewList =
-      questions.length > 15
+      questions.length > 60
         ? [
-            `(There are ${questions.length} existing questions; below are the last 15 stems — new items must differ from all, including earlier ones.)`,
-            ...questions.slice(-15).map((q, i) => `${questions.length - 15 + i + 1}. ${q.question.trim().slice(0, 140)}`),
+            `(There are ${questions.length} existing questions; below are the last 60 stems — new items must differ from all, including earlier ones.)`,
+            ...questions.slice(-60).map((q, i) => `${questions.length - 60 + i + 1}. ${q.question.trim().slice(0, 160)}`),
           ]
-        : questions.map((q, i) => `${i + 1}. ${q.question.trim().slice(0, 140)}`);
+        : questions.map((q, i) => `${i + 1}. ${q.question.trim().slice(0, 160)}`);
     const stemsPreview = previewList.join("\n");
 
     const user = [
@@ -235,6 +414,8 @@ async function tryTopUpToCount(
       "",
       `The quiz already has ${questions.length} questions. You must output ONLY a JSON object: { "questions": [ ... ] }.`,
       `"questions" MUST be an array of length exactly ${need} (not ${need - 1}, not ${need + 1}).`,
+      buildCoveragePlan(input.questionCount),
+      "",
       "New questions must cover different facts/angles than these existing stems (do not paraphrase the same idea):",
       stemsPreview,
     ].join("\n");
@@ -245,6 +426,7 @@ async function tryTopUpToCount(
         system: TOP_UP_SYSTEM_PROMPT,
         user,
         jsonSchema: TOP_UP_JSON_SCHEMA,
+        maxTokens: Math.max(2500, need * 260),
       });
     } catch (err) {
       logDev(`Top-up OpenAI request failed (round ${round + 1}):`, err);
@@ -271,6 +453,8 @@ async function tryTopUpToCount(
     }
 
     questions = mergeAppendedQuestions(questions, extra, n);
+    const deduped = dedupeSimilarQuestions(questions);
+    questions = deduped.questions;
 
     if (questions.length >= n) {
       questions = questions.slice(0, n);
@@ -302,7 +486,8 @@ export type FallbackReason =
   | "invalid_json"
   | "schema_invalid"
   | "wrong_question_count"
-  | "duplicate_options";
+  | "duplicate_options"
+  | "repetitive_questions";
 
 function logDev(message: string, extra?: unknown) {
   if (process.env.NODE_ENV === "development") {
@@ -344,7 +529,7 @@ export async function generateQuizPayload(
     const retryHint =
       attempt === 0
         ? ""
-        : `\n\nCRITICAL — retry ${attempt + 1}/${QUIZ_MAX_ATTEMPTS}: questions.length MUST equal ${n} (the user selected ${n} questions in the app). Open your JSON and count array elements. Each item needs 4 distinct options.`;
+        : `\n\nCRITICAL — retry ${attempt + 1}/${QUIZ_MAX_ATTEMPTS}: questions.length MUST equal ${n} (the user selected ${n} questions in the app). Open your JSON and count array elements. Each item needs 4 distinct options. The previous attempt failed because of ${lastFailure}; avoid repeated target facts and paraphrased stems.`;
 
     let raw: string;
     try {
@@ -384,6 +569,15 @@ export async function generateQuizPayload(
 
     let payload = normalizeIds(result.data);
 
+    const deduped = dedupeSimilarQuestions(payload.questions);
+    if (deduped.removedCount > 0) {
+      logDev(
+        `Removed ${deduped.removedCount} repetitive question(s) (attempt ${attempt + 1}).`,
+      );
+      payload = { ...payload, questions: deduped.questions };
+      lastFailure = "repetitive_questions";
+    }
+
     if (payload.questions.length > n) {
       logDev(
         `Trimming questions ${payload.questions.length} → ${n} (model returned extras).`,
@@ -414,9 +608,11 @@ export async function generateQuizPayload(
         }
       }
       logDev(
-        `Expected ${n} questions, got ${payload.questions.length} — retrying full generation.`,
+        `Expected ${n} unique questions, got ${payload.questions.length} — retrying full generation.`,
       );
-      lastFailure = "wrong_question_count";
+      if (lastFailure !== "repetitive_questions") {
+        lastFailure = "wrong_question_count";
+      }
       continue;
     }
 
@@ -465,18 +661,92 @@ function buildFallbackQuiz(input: {
     input.summaryText.trim().slice(0, 200) ||
     "This is placeholder content for local testing without an OpenAI API key.";
   const n = input.questionCount;
+  const templates = [
+    {
+      stem: "Which study habit best supports durable recall?",
+      correct: "Actively recalling the material before checking notes.",
+      distractors: [
+        "Re-reading the same paragraph without pausing.",
+        "Highlighting every sentence in the source.",
+        "Waiting until the final review session to test memory.",
+      ],
+    },
+    {
+      stem: "What is the main value of spacing review sessions?",
+      correct: "It gives memory time to weaken slightly before being strengthened again.",
+      distractors: [
+        "It removes the need for future retrieval practice.",
+        "It makes every review feel equally easy.",
+        "It guarantees mastery after one session.",
+      ],
+    },
+    {
+      stem: "Why should a learner explain an answer after choosing it?",
+      correct: "Explanation connects the answer to the underlying idea.",
+      distractors: [
+        "Explanation replaces the need for feedback.",
+        "Explanation matters only when the answer was wrong.",
+        "Explanation should introduce unrelated facts.",
+      ],
+    },
+    {
+      stem: "What makes a multiple-choice distractor useful for practice?",
+      correct: "It is plausible enough to reveal a real misconception.",
+      distractors: [
+        "It is obviously silly so the correct answer stands out.",
+        "It repeats the exact wording of the correct answer.",
+        "It combines several unrelated ideas at once.",
+      ],
+    },
+    {
+      stem: "Which sign suggests a quiz question is too vague?",
+      correct: "The learner cannot tell which concept the stem is asking about.",
+      distractors: [
+        "The question names the concept being tested.",
+        "The options are parallel in length and style.",
+        "The explanation reinforces the correct idea.",
+      ],
+    },
+    {
+      stem: "What should change as a quiz becomes longer?",
+      correct: "The questions should cover more distinct angles of the source.",
+      distractors: [
+        "The same fact should be repeated with new wording.",
+        "Explanations should become unrelated to the answer.",
+        "Options should become easier to guess from phrasing.",
+      ],
+    },
+    {
+      stem: "Which approach best supports application-level learning?",
+      correct: "Ask how a concept works in a concrete scenario.",
+      distractors: [
+        "Ask only for the title of the source.",
+        "Ask the same definition many times.",
+        "Avoid examples because they add context.",
+      ],
+    },
+    {
+      stem: "Why is feedback important after retrieval practice?",
+      correct: "It corrects errors before they become reinforced.",
+      distractors: [
+        "It makes guessing more valuable than recall.",
+        "It prevents learners from needing to think.",
+        "It should hide the reason an answer is correct.",
+      ],
+    },
+  ];
   const questions = Array.from({ length: n }, (_, i) => ({
     id: randomUUID(),
-    question: `Sample question ${i + 1} of ${n}: Which statement best reflects the idea of retrieval practice?`,
+    question: `Local fallback item ${i + 1} of ${n}: ${
+      templates[i % templates.length].stem
+    }`,
     options: [
-      "Actively recalling information strengthens memory more than passive re-reading alone.",
-      "Highlighting text once guarantees long-term retention.",
-      "Skipping review until the night before is optimal for mastery.",
-      "Memory improves only if you avoid testing yourself.",
+      templates[i % templates.length].correct,
+      ...templates[i % templates.length].distractors,
     ],
     correctIndex: 0,
     explanation:
-      "Research on retrieval practice shows that actively recalling information improves long-term retention compared with passive restudy.",
+      "This local fallback keeps the app usable without the AI provider, but production quizzes should come from the model and source text.",
   }));
   return {
     topic: `${topic} (fallback)`,

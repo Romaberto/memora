@@ -12,10 +12,10 @@ import {
 } from "@/lib/subscription";
 import { ratelimitGenerateQuiz } from "@/lib/rate-limit";
 
-// OpenAI generation can take 10–30s for larger quizzes — bump from the
-// default 15s ceiling so we don't 504 mid-call.
+// OpenAI generation can take close to a minute for 40–50 question quizzes,
+// especially when quality gates trigger a repair pass.
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 export async function POST(req: Request) {
   const userId = await getSessionUserId();
