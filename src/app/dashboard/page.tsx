@@ -70,7 +70,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       return null;
     }),
 
-    getLeaderboard("alltime", 10).catch(() => []),
+    getLeaderboard("alltime", 100, "activity").catch(() => []),
     // 1 hero + 3 alternates — see RecommendedQuizzes component.
     getRecommendedQuizzes(userId, subscriptionTier, 4).catch(() => []),
     getRecentTopicIdeas(userId).catch(() => []),

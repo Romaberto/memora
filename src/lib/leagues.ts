@@ -7,8 +7,11 @@
  *
  * Design rationale:
  *   - 20 tiers keeps progression visible and motivating (Duolingo-style).
- *   - Exponential-ish spacing: early tiers are easy to climb, top tiers
- *     require sustained effort.
+ *   - Calibrated for the streak-era point economy: a solid completed quiz
+ *     often earns ~100-200 activity points, while larger custom quizzes can
+ *     earn more. Early tiers should move, but not every few sessions.
+ *   - Exponential-ish spacing after the first few tiers keeps long-term
+ *     progression meaningful.
  *   - Knowledge-themed names (Novice → Archon) with color palette for UI badges.
  */
 
@@ -27,25 +30,25 @@ export type League = {
 
 export const LEAGUES: League[] = [
   { name: "Novice",      minPoints: 0,         color: "text-slate-500",   bg: "bg-slate-100 dark:bg-slate-800",     icon: "📒" },
-  { name: "Pupil",       minPoints: 150,       color: "text-orange-400",  bg: "bg-orange-50 dark:bg-orange-950/40", icon: "✏️" },
-  { name: "Apprentice",  minPoints: 400,       color: "text-stone-500",   bg: "bg-stone-100 dark:bg-stone-800",     icon: "📖" },
-  { name: "Student",     minPoints: 800,       color: "text-amber-600",   bg: "bg-amber-50 dark:bg-amber-950/40",   icon: "🎒" },
-  { name: "Scholar",     minPoints: 1_400,     color: "text-gray-500",    bg: "bg-gray-100 dark:bg-gray-800",       icon: "📚" },
-  { name: "Scribe",      minPoints: 2_200,     color: "text-slate-400",   bg: "bg-slate-50 dark:bg-slate-800/60",   icon: "🖋️" },
-  { name: "Thinker",     minPoints: 3_500,     color: "text-yellow-500",  bg: "bg-yellow-50 dark:bg-yellow-950/40", icon: "💡" },
-  { name: "Analyst",     minPoints: 5_500,     color: "text-cyan-400",    bg: "bg-cyan-50 dark:bg-cyan-950/40",     icon: "🔬" },
-  { name: "Researcher",  minPoints: 8_500,     color: "text-blue-500",    bg: "bg-blue-50 dark:bg-blue-950/40",     icon: "🧪" },
-  { name: "Mentor",      minPoints: 12_500,    color: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-950/40", icon: "🎓" },
-  { name: "Professor",   minPoints: 18_000,    color: "text-red-500",     bg: "bg-red-50 dark:bg-red-950/40",       icon: "🏛️" },
-  { name: "Philosopher", minPoints: 25_000,    color: "text-purple-500",  bg: "bg-purple-50 dark:bg-purple-950/40", icon: "🦉" },
-  { name: "Strategist",  minPoints: 35_000,    color: "text-gray-300",    bg: "bg-gray-50 dark:bg-gray-800/60",     icon: "♟️" },
-  { name: "Visionary",   minPoints: 50_000,    color: "text-amber-400",   bg: "bg-amber-50 dark:bg-amber-950/40",   icon: "🔭" },
-  { name: "Luminary",    minPoints: 75_000,    color: "text-sky-400",     bg: "bg-sky-50 dark:bg-sky-950/40",       icon: "🌟" },
-  { name: "Polymath",    minPoints: 110_000,   color: "text-indigo-300",  bg: "bg-indigo-50 dark:bg-indigo-950/40", icon: "🧬" },
-  { name: "Oracle",      minPoints: 160_000,   color: "text-zinc-400",    bg: "bg-zinc-100 dark:bg-zinc-800",       icon: "🔮" },
-  { name: "Sage",        minPoints: 230_000,   color: "text-teal-500",    bg: "bg-teal-50 dark:bg-teal-950/40",     icon: "🧙" },
-  { name: "Mastermind",  minPoints: 350_000,   color: "text-yellow-300",  bg: "bg-gradient-to-r from-yellow-50 to-amber-50 dark:from-yellow-950/40 dark:to-amber-950/40", icon: "🧠" },
-  { name: "Archon",      minPoints: 500_000,   color: "text-violet-400",  bg: "bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950/40 dark:to-purple-950/40", icon: "👁️" },
+  { name: "Pupil",       minPoints: 500,       color: "text-orange-400",  bg: "bg-orange-50 dark:bg-orange-950/40", icon: "✏️" },
+  { name: "Apprentice",  minPoints: 1_250,     color: "text-stone-500",   bg: "bg-stone-100 dark:bg-stone-800",     icon: "📖" },
+  { name: "Student",     minPoints: 2_500,     color: "text-amber-600",   bg: "bg-amber-50 dark:bg-amber-950/40",   icon: "🎒" },
+  { name: "Scholar",     minPoints: 4_500,     color: "text-gray-500",    bg: "bg-gray-100 dark:bg-gray-800",       icon: "📚" },
+  { name: "Scribe",      minPoints: 7_500,     color: "text-slate-400",   bg: "bg-slate-50 dark:bg-slate-800/60",   icon: "🖋️" },
+  { name: "Thinker",     minPoints: 12_000,    color: "text-yellow-500",  bg: "bg-yellow-50 dark:bg-yellow-950/40", icon: "💡" },
+  { name: "Analyst",     minPoints: 18_000,    color: "text-cyan-400",    bg: "bg-cyan-50 dark:bg-cyan-950/40",     icon: "🔬" },
+  { name: "Researcher",  minPoints: 27_000,    color: "text-blue-500",    bg: "bg-blue-50 dark:bg-blue-950/40",     icon: "🧪" },
+  { name: "Mentor",      minPoints: 40_000,    color: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-950/40", icon: "🎓" },
+  { name: "Professor",   minPoints: 60_000,    color: "text-red-500",     bg: "bg-red-50 dark:bg-red-950/40",       icon: "🏛️" },
+  { name: "Philosopher", minPoints: 90_000,    color: "text-purple-500",  bg: "bg-purple-50 dark:bg-purple-950/40", icon: "🦉" },
+  { name: "Strategist",  minPoints: 135_000,   color: "text-gray-300",    bg: "bg-gray-50 dark:bg-gray-800/60",     icon: "♟️" },
+  { name: "Visionary",   minPoints: 200_000,   color: "text-amber-400",   bg: "bg-amber-50 dark:bg-amber-950/40",   icon: "🔭" },
+  { name: "Luminary",    minPoints: 300_000,   color: "text-sky-400",     bg: "bg-sky-50 dark:bg-sky-950/40",       icon: "🌟" },
+  { name: "Polymath",    minPoints: 450_000,   color: "text-indigo-300",  bg: "bg-indigo-50 dark:bg-indigo-950/40", icon: "🧬" },
+  { name: "Oracle",      minPoints: 675_000,   color: "text-zinc-400",    bg: "bg-zinc-100 dark:bg-zinc-800",       icon: "🔮" },
+  { name: "Sage",        minPoints: 1_000_000, color: "text-teal-500",    bg: "bg-teal-50 dark:bg-teal-950/40",     icon: "🧙" },
+  { name: "Mastermind",  minPoints: 1_500_000, color: "text-yellow-300",  bg: "bg-gradient-to-r from-yellow-50 to-amber-50 dark:from-yellow-950/40 dark:to-amber-950/40", icon: "🧠" },
+  { name: "Archon",      minPoints: 2_250_000, color: "text-violet-400",  bg: "bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950/40 dark:to-purple-950/40", icon: "👁️" },
 ];
 
 /**

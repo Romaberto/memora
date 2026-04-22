@@ -12,16 +12,26 @@ function parsePeriod(raw: string | undefined): LeaderboardPeriod {
 export default async function LeaderboardPage({ searchParams }: Props) {
   const userId = await requireUserId();
   const period = parsePeriod(searchParams.p);
-  const entries = await getLeaderboard(period, 100);
-  const userRank = findUserRank(entries, userId);
+  const [activityEntries, competitiveEntries] = await Promise.all([
+    getLeaderboard(period, 100, "activity"),
+    getLeaderboard(period, 250, "competitive"),
+  ]);
+  const userRank = findUserRank(activityEntries, userId);
 
   return (
     <LeaderboardView
-      entries={entries}
+      entries={activityEntries}
+      competitiveEntries={competitiveEntries}
       currentUserId={userId}
       userRank={userRank}
       period={period}
-      initialTab={searchParams.tab === "leagues" ? "leagues" : "global"}
+      initialTab={
+        searchParams.tab === "leagues" ||
+        searchParams.tab === "challenges" ||
+        searchParams.tab === "pvp"
+          ? searchParams.tab
+          : "active"
+      }
     />
   );
 }
