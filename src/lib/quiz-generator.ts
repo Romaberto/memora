@@ -107,11 +107,243 @@ OUTPUT RULES (STRICT):
 - If the user provides ONLY a title/name with little or no substantive text, you may use general, widely accepted knowledge about that source IF it is a well-known public work or topic; otherwise keep questions conservative and tied to any hints given.
 - Generate stable unique "id" values as random UUID strings for each question.
 - If you risk running out of space, prioritize finishing all N questions with valid 4-option items over long explanations.
+- LANGUAGE MATCHING (CRITICAL): Match the dominant language of the user's source text. If the title, summary, or notes are in Ukrainian, write the topic, every question, every option, and every explanation in Ukrainian. Apply the same rule for Spanish, Portuguese, Polish, French, German, Italian, Turkish, Russian, and English. Do not silently switch to English unless the source text is clearly English or too short to infer another language confidently.
 
 QUALITY BAR:
 - Vary difficulty slightly across the set, but keep every item fair and clearly answerable from the allowed knowledge.
 - Order questions so difficulty tends to increase from the start of the array toward the end (early items slightly easier, later items slightly harder), without making any item unfair.
 - Explanations should reinforce the correct idea without introducing new unrelated claims.`;
+
+type LanguageHint = {
+  label: string;
+  reason: string;
+};
+
+function makeLanguageWordPattern(words: string[]): RegExp {
+  return new RegExp(
+    `(?:^|[\\s.,!?;:()"'/-])(${words.join("|")})(?=[\\s.,!?;:()"'/-]|$)`,
+    "giu",
+  );
+}
+
+const LANGUAGE_RULES: Array<{
+  label: string;
+  score: (text: string) => number;
+}> = [
+  {
+    label: "Ukrainian",
+    score: (text) =>
+      countMatches(text, /[іїєґІЇЄҐ]/g) * 3 +
+      countMatches(
+        text,
+        makeLanguageWordPattern([
+          "та",
+          "це",
+          "для",
+          "про",
+          "як",
+          "що",
+          "який",
+          "яка",
+          "книга",
+          "гра",
+          "лекція",
+          "конспект",
+        ]),
+      ) *
+        2,
+  },
+  {
+    label: "Russian",
+    score: (text) =>
+      countMatches(text, /[ёъыэЁЪЫЭ]/g) * 3 +
+      countMatches(
+        text,
+        makeLanguageWordPattern([
+          "это",
+          "как",
+          "что",
+          "книга",
+          "игра",
+          "лекция",
+          "конспект",
+          "какой",
+          "какая",
+        ]),
+      ) *
+        2,
+  },
+  {
+    label: "Polish",
+    score: (text) =>
+      countMatches(text, /[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/g) * 3 +
+      countMatches(
+        text,
+        makeLanguageWordPattern([
+          "czy",
+          "jak",
+          "książka",
+          "notatki",
+          "wykład",
+          "temat",
+          "który",
+          "która",
+        ]),
+      ) *
+        2,
+  },
+  {
+    label: "Portuguese",
+    score: (text) =>
+      countMatches(text, /[ãõçÃÕÇ]/g) * 3 +
+      countMatches(
+        text,
+        makeLanguageWordPattern([
+          "não",
+          "como",
+          "para",
+          "livro",
+          "resumo",
+          "anotações",
+          "qual",
+          "uma",
+        ]),
+      ) *
+        2,
+  },
+  {
+    label: "Spanish",
+    score: (text) =>
+      countMatches(text, /[ñÑ¡¿]/g) * 3 +
+      countMatches(
+        text,
+        makeLanguageWordPattern([
+          "como",
+          "para",
+          "libro",
+          "resumen",
+          "notas",
+          "tema",
+          "cuál",
+          "una",
+        ]),
+      ) *
+        2,
+  },
+  {
+    label: "French",
+    score: (text) =>
+      countMatches(text, /[àâçéèêëîïôùûüœÀÂÇÉÈÊËÎÏÔÙÛÜŒ]/g) * 3 +
+      countMatches(
+        text,
+        makeLanguageWordPattern([
+          "avec",
+          "pour",
+          "livre",
+          "résumé",
+          "notes",
+          "cours",
+          "quel",
+          "quelle",
+        ]),
+      ) *
+        2,
+  },
+  {
+    label: "German",
+    score: (text) =>
+      countMatches(text, /[äöüßÄÖÜ]/g) * 3 +
+      countMatches(
+        text,
+        makeLanguageWordPattern([
+          "und",
+          "wie",
+          "buch",
+          "notizen",
+          "vorlesung",
+          "thema",
+          "welche",
+          "welcher",
+        ]),
+      ) *
+        2,
+  },
+  {
+    label: "Italian",
+    score: (text) =>
+      countMatches(
+        text,
+        makeLanguageWordPattern([
+          "come",
+          "libro",
+          "riassunto",
+          "appunti",
+          "lezione",
+          "tema",
+          "quale",
+          "una",
+        ]),
+      ) * 2,
+  },
+  {
+    label: "Turkish",
+    score: (text) =>
+      countMatches(text, /[çğıİöşüÇĞİIÖŞÜ]/g) * 3 +
+      countMatches(
+        text,
+        makeLanguageWordPattern([
+          "ve",
+          "nasıl",
+          "kitap",
+          "özet",
+          "notlar",
+          "konu",
+          "hangi",
+          "bir",
+        ]),
+      ) *
+        2,
+  },
+];
+
+function countMatches(text: string, pattern: RegExp): number {
+  return text.match(pattern)?.length ?? 0;
+}
+
+function inferOutputLanguage(input: {
+  title?: string | null;
+  summaryText: string;
+  notes?: string | null;
+}): LanguageHint {
+  const combined = [input.title, input.summaryText, input.notes]
+    .map((part) => part?.trim())
+    .filter(Boolean)
+    .join("\n");
+
+  if (!combined) {
+    return {
+      label: "English",
+      reason: "No source text was provided, so default to English.",
+    };
+  }
+
+  const winner = LANGUAGE_RULES.map((rule) => ({
+    label: rule.label,
+    score: rule.score(combined),
+  })).sort((a, b) => b.score - a.score)[0];
+
+  if (winner && winner.score >= 4) {
+    return {
+      label: winner.label,
+      reason: `Detected ${winner.label} cues in the source text.`,
+    };
+  }
+
+  return {
+    label: "English",
+    reason: "The source text looks mostly English or too mixed to infer another language confidently.",
+  };
+}
 
 function buildCoveragePlan(n: QuestionCount): string {
   if (n <= 10) {
@@ -177,6 +409,7 @@ function buildUserPrompt(input: {
   questionCount: QuestionCount;
 }): string {
   const n = input.questionCount;
+  const languageHint = inferOutputLanguage(input);
   const parts = [
     "=== QUIZ SIZE (MANDATORY) ===",
     `The JSON field "questions" MUST be an array of length exactly ${n} (not ${n - 1}, not ${n + 1}).`,
@@ -184,6 +417,8 @@ function buildUserPrompt(input: {
     "=== END QUIZ SIZE ===",
     "",
     `Generate a quiz with EXACTLY ${n} multiple-choice questions.`,
+    `OUTPUT LANGUAGE: ${languageHint.label}. ${languageHint.reason}`,
+    `Everything user-facing in the JSON must stay in ${languageHint.label}: topic, question stems, answer options, and explanations.`,
     "",
     buildCoveragePlan(n),
     "",
@@ -222,6 +457,7 @@ Shape: { "questions": [ ... ] } — nothing else at the top level.
 Each question: id (UUID string), question, options (EXACTLY 4 distinct strings), correctIndex (0–3), explanation (brief).
 Each "question" stem must name the specific idea being tested (no vague "which is true?" without context; no unclear "it/this").
 Every new question must test a distinct target fact. Do not paraphrase existing questions. Do not reuse the same correct answer with a lightly rewritten stem.
+Match the dominant language of the provided source text and existing quiz. Keep every new question, option, and explanation in that same language.
 The user states how many items must appear in "questions"; that length must match exactly.`;
 
 const topUpPayloadSchema = z.object({
@@ -391,6 +627,7 @@ async function tryTopUpToCount(
   startPayload: QuizPayload,
 ): Promise<QuizPayload | null> {
   const n = input.questionCount;
+  const languageHint = inferOutputLanguage(input);
   let questions = normalizeIds(startPayload).questions;
   // With structured outputs the first call almost always returns the right
   // count; 2 top-up rounds is enough to recover from a rare under-count.
@@ -409,6 +646,8 @@ async function tryTopUpToCount(
 
     const user = [
       `Quiz topic: ${topic}`,
+      `OUTPUT LANGUAGE: ${languageHint.label}. ${languageHint.reason}`,
+      `Every new question, option, and explanation must remain in ${languageHint.label}.`,
       "",
       buildSourceInputBlock(input),
       "",
@@ -652,6 +891,7 @@ function buildFallbackQuiz(input: {
   notes?: string | null;
   questionCount: QuestionCount;
 }): QuizPayload {
+  const languageHint = inferOutputLanguage(input);
   const topic =
     input.title?.trim() ||
     (input.summaryText.trim()
@@ -749,11 +989,15 @@ function buildFallbackQuiz(input: {
       "This local fallback keeps the app usable without the AI provider, but production quizzes should come from the model and source text.",
   }));
   return {
-    topic: `${topic} (fallback)`,
+    topic:
+      languageHint.label === "English" ? `${topic} (fallback)` : topic,
     questions: questions.map((q, idx) => ({
       ...q,
       question: `(${idx + 1}/${n}) ${q.question}`,
-      explanation: `${q.explanation} Context hint: ${base.slice(0, 120)}…`,
+      explanation:
+        languageHint.label === "English"
+          ? `${q.explanation} Context hint: ${base.slice(0, 120)}…`
+          : q.explanation,
     })),
   };
 }
