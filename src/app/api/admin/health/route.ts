@@ -15,6 +15,8 @@ import { Redis } from "@upstash/redis";
 import prisma from "@/lib/db";
 import { getSessionUserId } from "@/lib/auth";
 import { isAdmin } from "@/lib/admin";
+import { getDbRuntimeConfig } from "@/lib/db-runtime-config";
+import { getQuizGenerationCapacitySnapshot } from "@/lib/quiz-generation-capacity";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -103,6 +105,7 @@ export async function GET() {
   const [
     db,
     redis,
+    generationCapacity,
     usersTotal,
     quizzesToday,
     quizzes5m,
@@ -118,6 +121,7 @@ export async function GET() {
   ] = await Promise.all([
     pingDb(),
     pingRedis(),
+    getQuizGenerationCapacitySnapshot(),
     safeCount(prisma.user.count({ where: { NOT: { email: "guest@memorize.local" } } })),
     safeCount(prisma.quizRequest.count({ where: { ...realQuiz, createdAt: { gte: startOfDay } } })),
     safeCount(prisma.quizRequest.count({ where: { ...realQuiz, createdAt: { gte: fiveMinAgo } } })),
@@ -165,7 +169,9 @@ export async function GET() {
   return NextResponse.json({
     timestamp: now.toISOString(),
     db,
+    dbRuntime: getDbRuntimeConfig(),
     redis,
+    generationCapacity,
     metrics: {
       usersTotal,
       usersToday,

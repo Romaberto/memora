@@ -34,6 +34,9 @@ Open [http://localhost:3000](http://localhost:3000). Go straight to **[/dashboar
 | `DATABASE_URL` | Prisma connection string |
 | `OPENAI_API_KEY` | Server-side quiz generation |
 | `OPENAI_QUIZ_MODEL` | Optional model override (default `gpt-4o-mini`) |
+| `QUIZ_GENERATION_MAX_IN_FLIGHT` | Global Redis-backed cap for in-flight quiz generations |
+| `QUIZ_GENERATION_SLOT_TTL_SECONDS` | Lease TTL for generation slots |
+| `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Required for rate limiting + generation concurrency gate |
 
 Place values in **`.env`** (never commit it).
 
@@ -58,6 +61,41 @@ Place values in **`.env`** (never commit it).
 | `npx prisma migrate dev` | Create/apply migrations |
 | `npx prisma studio` | Browse SQLite/Postgres data |
 | `npm run db:seed` | Run `prisma/seed.ts` |
+| `npm run stress:quiz` | Quiz-generation stress harness |
+
+## Load testing
+
+The repo now includes a repeatable quiz-generation load tester:
+
+```bash
+npm run stress:quiz -- --users 200 --concurrency 200 --question-count 20 --no-persist
+```
+
+Useful modes:
+
+- `--mode stub` (default): simulates AI latency cheaply, best for app/DB testing
+- `--mode openai --allow-expensive`: small real-provider tests only
+- `--preset persist-ramp`: runs 100, 250, 500, 1000 persisted stub tests
+- `--output-json ./artifacts/quiz-stress.json`: saves machine-readable results
+
+Recommended rollout:
+
+1. Fix database pooling / concurrency settings first.
+2. Run `stub + persist` ramp tests: `100`, `250`, `500`, `1000`.
+3. Only then run a much smaller `openai` smoke test to discover provider-side limits.
+
+### Pooling note
+
+For Neon pooled URLs:
+
+- local dev / single-process load tests should not use `connection_limit=1`
+- serverless production usually starts lower (`1..2`) because many function instances may exist at once
+
+The admin live-ops page now exposes:
+
+- DB host mode (`pooler` vs `direct`)
+- parsed DB `connection_limit`
+- current in-flight quiz generation slots
 
 ## Product flow
 

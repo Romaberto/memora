@@ -3,6 +3,7 @@ import prisma from "@/lib/db";
 import { getSessionUserId } from "@/lib/auth";
 import { createAIClient } from "@/lib/ai";
 import { generateQuizPayload } from "@/lib/quiz-generator";
+import { acquireQuizGenerationLease } from "@/lib/quiz-generation-capacity";
 import { z } from "zod";
 import { isQuestionCount } from "@/lib/schemas/quiz";
 import { ratelimitGenerateQuiz } from "@/lib/rate-limit";
@@ -58,58 +59,78 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid stored question count" }, { status: 500 });
   }
 
-  const ai = createAIClient();
-  const { payload, usedFallback, fallbackReason } = await generateQuizPayload(
-    ai,
-    {
-    title: prev.title,
-    summaryText: prev.summaryText,
-    notes: prev.notes,
-    questionCount: prev.questionCount,
-    },
-  );
-
-  let quizRequest;
-  try {
-    quizRequest = await createQuizRequestWithQuota(userId, {
-      title: prev.title,
-      summaryText: prev.summaryText,
-      notes: prev.notes,
-      questionCount: prev.questionCount,
-      topic: payload.topic,
-      generatedQuiz: JSON.stringify(payload),
-      usedFallback,
-      questions: payload.questions.map((q, idx) => ({
-        order: idx,
-        question: q.question,
-        options: JSON.stringify(q.options),
-        correctIndex: q.correctIndex,
-        explanation: q.explanation,
-      })),
-    });
-  } catch (err) {
-    if (err instanceof QuotaExceededError) {
-      return NextResponse.json({ error: err.message }, { status: 429 });
-    }
-    console.error("[regenerate-quiz] Failed to persist quiz:", err);
-    return NextResponse.json({ error: "Failed to save regenerated quiz. Please try again." }, { status: 500 });
+  const lease = await acquireQuizGenerationLease();
+  if (!lease.acquired) {
+    return NextResponse.json(
+      {
+        error: "Quiz generation is busy right now. Please try again in a moment.",
+        retryAfterSeconds: lease.retryAfterSeconds,
+        capacityLimit: lease.limit,
+        inFlight: lease.inFlight,
+      },
+      {
+        status: 503,
+        headers: { "Retry-After": String(lease.retryAfterSeconds ?? 5) },
+      },
+    );
   }
 
-  const questionsOut = quizRequest.questions.map((row) => {
-    let options: string[];
-    try {
-      options = JSON.parse(row.options) as string[];
-    } catch {
-      options = [];
-    }
-    return { id: row.id, question: row.question, options, correctIndex: row.correctIndex, explanation: row.explanation };
-  });
+  try {
+    const ai = createAIClient();
+    const { payload, usedFallback, fallbackReason } = await generateQuizPayload(
+      ai,
+      {
+        title: prev.title,
+        summaryText: prev.summaryText,
+        notes: prev.notes,
+        questionCount: prev.questionCount,
+      },
+    );
 
-  return NextResponse.json({
-    quizRequestId: quizRequest.id,
-    topic: quizRequest.topic,
-    questions: questionsOut,
-    usedFallback,
-    ...(usedFallback && fallbackReason ? { fallbackReason } : {}),
-  });
+    let quizRequest;
+    try {
+      quizRequest = await createQuizRequestWithQuota(userId, {
+        title: prev.title,
+        summaryText: prev.summaryText,
+        notes: prev.notes,
+        questionCount: prev.questionCount,
+        topic: payload.topic,
+        generatedQuiz: JSON.stringify(payload),
+        usedFallback,
+        questions: payload.questions.map((q, idx) => ({
+          order: idx,
+          question: q.question,
+          options: JSON.stringify(q.options),
+          correctIndex: q.correctIndex,
+          explanation: q.explanation,
+        })),
+      });
+    } catch (err) {
+      if (err instanceof QuotaExceededError) {
+        return NextResponse.json({ error: err.message }, { status: 429 });
+      }
+      console.error("[regenerate-quiz] Failed to persist quiz:", err);
+      return NextResponse.json({ error: "Failed to save regenerated quiz. Please try again." }, { status: 500 });
+    }
+
+    const questionsOut = quizRequest.questions.map((row) => {
+      let options: string[];
+      try {
+        options = JSON.parse(row.options) as string[];
+      } catch {
+        options = [];
+      }
+      return { id: row.id, question: row.question, options, correctIndex: row.correctIndex, explanation: row.explanation };
+    });
+
+    return NextResponse.json({
+      quizRequestId: quizRequest.id,
+      topic: quizRequest.topic,
+      questions: questionsOut,
+      usedFallback,
+      ...(usedFallback && fallbackReason ? { fallbackReason } : {}),
+    });
+  } finally {
+    await lease.release();
+  }
 }

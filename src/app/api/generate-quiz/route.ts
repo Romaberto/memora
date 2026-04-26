@@ -3,6 +3,7 @@ import { getSessionUserId } from "@/lib/auth";
 import { createAIClient } from "@/lib/ai";
 import { generateQuizPayload, buildPromptBundle } from "@/lib/quiz-generator";
 import { generateQuizBodySchema } from "@/lib/schemas/quiz";
+import { acquireQuizGenerationLease } from "@/lib/quiz-generation-capacity";
 import {
   getUserSubscription,
   canGenerateQuiz,
@@ -113,75 +114,95 @@ export async function POST(req: Request) {
     );
   }
 
+  const lease = await acquireQuizGenerationLease();
+  if (!lease.acquired) {
+    return NextResponse.json(
+      {
+        error: "Quiz generation is busy right now. Please try again in a moment.",
+        retryAfterSeconds: lease.retryAfterSeconds,
+        capacityLimit: lease.limit,
+        inFlight: lease.inFlight,
+      },
+      {
+        status: 503,
+        headers: { "Retry-After": String(lease.retryAfterSeconds ?? 5) },
+      },
+    );
+  }
+
   const ai = createAIClient();
-  const { payload, rawModelJson, usedFallback, fallbackReason } =
-    await generateQuizPayload(ai, {
-      title,
-      summaryText,
-      notes,
-      questionCount,
-    });
-
-  // Atomic create-with-quota: re-checks the daily count inside a SERIALIZABLE
-  // transaction so two concurrent requests can't both slip past the limit.
-  // Throws QuotaExceededError if the user used their last slot in another
-  // tab/request between the soft pre-check above and now.
-  let quizRequest;
   try {
-    quizRequest = await createQuizRequestWithQuota(userId, {
-      title: title?.trim() || null,
-      summaryText: summaryText.trim(),
-      notes: notes?.trim() || null,
-      questionCount,
-      topic: payload.topic,
-      generatedQuiz: JSON.stringify(payload),
-      usedFallback,
-      questions: payload.questions.map((q, idx) => ({
-        order: idx,
-        question: q.question,
-        options: JSON.stringify(q.options),
-        correctIndex: q.correctIndex,
-        explanation: q.explanation,
-      })),
-    });
-  } catch (err) {
-    if (err instanceof QuotaExceededError) {
-      return NextResponse.json(
-        { error: err.message, dailyLimitReached: true },
-        { status: 429 },
-      );
-    }
-    console.error("[generate-quiz] Failed to persist quiz:", err);
-    return NextResponse.json({ error: "Failed to save quiz. Please try again." }, { status: 500 });
-  }
+    const { payload, rawModelJson, usedFallback, fallbackReason } =
+      await generateQuizPayload(ai, {
+        title,
+        summaryText,
+        notes,
+        questionCount,
+      });
 
-  const questionsOut = quizRequest.questions.map((row) => {
-    let options: string[];
+    // Atomic create-with-quota: re-checks the daily count inside a SERIALIZABLE
+    // transaction so two concurrent requests can't both slip past the limit.
+    // Throws QuotaExceededError if the user used their last slot in another
+    // tab/request between the soft pre-check above and now.
+    let quizRequest;
     try {
-      options = JSON.parse(row.options) as string[];
-    } catch {
-      options = [];
+      quizRequest = await createQuizRequestWithQuota(userId, {
+        title: title?.trim() || null,
+        summaryText: summaryText.trim(),
+        notes: notes?.trim() || null,
+        questionCount,
+        topic: payload.topic,
+        generatedQuiz: JSON.stringify(payload),
+        usedFallback,
+        questions: payload.questions.map((q, idx) => ({
+          order: idx,
+          question: q.question,
+          options: JSON.stringify(q.options),
+          correctIndex: q.correctIndex,
+          explanation: q.explanation,
+        })),
+      });
+    } catch (err) {
+      if (err instanceof QuotaExceededError) {
+        return NextResponse.json(
+          { error: err.message, dailyLimitReached: true },
+          { status: 429 },
+        );
+      }
+      console.error("[generate-quiz] Failed to persist quiz:", err);
+      return NextResponse.json({ error: "Failed to save quiz. Please try again." }, { status: 500 });
     }
-    return { id: row.id, question: row.question, options, correctIndex: row.correctIndex, explanation: row.explanation };
-  });
 
-  const response: Record<string, unknown> = {
-    quizRequestId: quizRequest.id,
-    topic: quizRequest.topic,
-    questions: questionsOut,
-    usedFallback,
-    ...(usedFallback && fallbackReason ? { fallbackReason } : {}),
-  };
-
-  if (debugIncludePrompt && process.env.NODE_ENV === "development") {
-    response.debugPrompt = buildPromptBundle({
-      title,
-      summaryText,
-      notes,
-      questionCount,
+    const questionsOut = quizRequest.questions.map((row) => {
+      let options: string[];
+      try {
+        options = JSON.parse(row.options) as string[];
+      } catch {
+        options = [];
+      }
+      return { id: row.id, question: row.question, options, correctIndex: row.correctIndex, explanation: row.explanation };
     });
-    if (rawModelJson) response.debugRawModelJson = rawModelJson;
-  }
 
-  return NextResponse.json(response);
+    const response: Record<string, unknown> = {
+      quizRequestId: quizRequest.id,
+      topic: quizRequest.topic,
+      questions: questionsOut,
+      usedFallback,
+      ...(usedFallback && fallbackReason ? { fallbackReason } : {}),
+    };
+
+    if (debugIncludePrompt && process.env.NODE_ENV === "development") {
+      response.debugPrompt = buildPromptBundle({
+        title,
+        summaryText,
+        notes,
+        questionCount,
+      });
+      if (rawModelJson) response.debugRawModelJson = rawModelJson;
+    }
+
+    return NextResponse.json(response);
+  } finally {
+    await lease.release();
+  }
 }

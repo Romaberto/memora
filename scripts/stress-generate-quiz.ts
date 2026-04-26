@@ -1,4 +1,6 @@
 import { randomUUID } from "crypto";
+import { mkdir, writeFile } from "fs/promises";
+import { dirname } from "path";
 import prisma from "../src/lib/db";
 import { createAIClient, type AIClient, type ChatCompletionArgs } from "../src/lib/ai";
 import { generateQuizPayload } from "../src/lib/quiz-generator";
@@ -8,6 +10,7 @@ import { QUESTION_COUNTS, type QuestionCount } from "../src/lib/schemas/quiz";
 type Mode = "stub" | "openai";
 
 type Options = {
+  preset: "single" | "persist-ramp" | "openai-smoke";
   users: number;
   concurrency: number;
   requestsPerUser: number;
@@ -18,6 +21,7 @@ type Options = {
   stubAiMs: number;
   stubAiJitterMs: number;
   allowExpensive: boolean;
+  outputJson: string | null;
 };
 
 type LoadUser = {
@@ -34,6 +38,7 @@ type TaskResult = {
 };
 
 const DEFAULTS: Options = {
+  preset: "single",
   users: 100,
   concurrency: 25,
   requestsPerUser: 1,
@@ -44,6 +49,23 @@ const DEFAULTS: Options = {
   stubAiMs: 1200,
   stubAiJitterMs: 400,
   allowExpensive: false,
+  outputJson: null,
+};
+
+type RunSummary = {
+  label: string;
+  options: Options;
+  totalRequests: number;
+  successes: number;
+  failures: number;
+  fallbackCount: number;
+  wallTimeMs: number;
+  throughputReqPerSecond: number;
+  latencyP50Ms: number;
+  latencyP95Ms: number;
+  latencyP99Ms: number;
+  latencyMaxMs: number;
+  failureBreakdown: Record<string, number>;
 };
 
 class StubAIClient implements AIClient {
@@ -114,6 +136,12 @@ function parseArgs(argv: string[]): Options {
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     const next = argv[i + 1];
+    if (arg === "--preset" && next) {
+      if (next !== "single" && next !== "persist-ramp" && next !== "openai-smoke") {
+        throw new Error(`--preset must be single, persist-ramp, or openai-smoke`);
+      }
+      out.preset = next;
+    }
     if (arg === "--users" && next) out.users = toPositiveInt(next, "--users");
     if (arg === "--concurrency" && next) out.concurrency = toPositiveInt(next, "--concurrency");
     if (arg === "--requests-per-user" && next) {
@@ -132,6 +160,7 @@ function parseArgs(argv: string[]): Options {
     if (arg === "--stub-ai-jitter-ms" && next) {
       out.stubAiJitterMs = toNonNegativeInt(next, "--stub-ai-jitter-ms");
     }
+    if (arg === "--output-json" && next) out.outputJson = next;
     if (arg === "--no-persist") out.persist = false;
     if (arg === "--no-cleanup") out.cleanup = false;
     if (arg === "--allow-expensive") out.allowExpensive = true;
@@ -297,14 +326,59 @@ async function workerPool<T>(concurrency: number, total: number, task: (index: n
 
 async function main() {
   const options = parseArgs(process.argv.slice(2));
+  const runPlan = buildRunPlan(options);
+  const summaries: RunSummary[] = [];
+
+  for (const step of runPlan) {
+    summaries.push(await executeRun(step));
+  }
+
+  if (options.outputJson) {
+    await mkdir(dirname(options.outputJson), { recursive: true });
+    await writeFile(options.outputJson, JSON.stringify(summaries, null, 2), "utf8");
+    console.log(`\nSaved JSON summary to ${options.outputJson}`);
+  }
+}
+
+function buildRunPlan(options: Options): Options[] {
+  if (options.preset === "persist-ramp") {
+    return [100, 250, 500, 1000].map((users) => ({
+      ...options,
+      users,
+      concurrency: users,
+      persist: true,
+      preset: "single",
+    }));
+  }
+
+  if (options.preset === "openai-smoke") {
+    return [
+      {
+        ...options,
+        mode: "openai",
+        users: 10,
+        concurrency: 5,
+        requestsPerUser: 1,
+        persist: false,
+        allowExpensive: true,
+        preset: "single",
+      },
+    ];
+  }
+
+  return [options];
+}
+
+async function executeRun(options: Options): Promise<RunSummary> {
   assertSafeOptions(options);
 
   const totalRequests = options.users * options.requestsPerUser;
   const runId = `${Date.now()}-${randomUUID().slice(0, 8)}`;
   const ai = getAiClient(options);
+  const label = `${options.mode}:${options.persist ? "persist" : "nopersist"}:${options.users}u:${options.concurrency}c:${options.questionCount}q`;
 
   console.log("=== Memora Quiz Generation Stress Test ===");
-  console.log(JSON.stringify({ ...options, totalRequests, runId }, null, 2));
+  console.log(JSON.stringify({ label, ...options, totalRequests, runId }, null, 2));
   console.log("");
 
   const users = await createLoadUsers(runId, options.users);
@@ -349,11 +423,16 @@ async function main() {
   console.log(`Wall time: ${formatMs(totalDurationMs)}`);
   console.log(`Throughput: ${throughput.toFixed(2)} req/s`);
 
+  const latencyP50Ms = latencies.length > 0 ? percentile(latencies, 50) : 0;
+  const latencyP95Ms = latencies.length > 0 ? percentile(latencies, 95) : 0;
+  const latencyP99Ms = latencies.length > 0 ? percentile(latencies, 99) : 0;
+  const latencyMaxMs = latencies.length > 0 ? Math.max(...latencies) : 0;
+
   if (latencies.length > 0) {
-    console.log(`Latency p50: ${formatMs(percentile(latencies, 50))}`);
-    console.log(`Latency p95: ${formatMs(percentile(latencies, 95))}`);
-    console.log(`Latency p99: ${formatMs(percentile(latencies, 99))}`);
-    console.log(`Latency max: ${formatMs(Math.max(...latencies))}`);
+    console.log(`Latency p50: ${formatMs(latencyP50Ms)}`);
+    console.log(`Latency p95: ${formatMs(latencyP95Ms)}`);
+    console.log(`Latency p99: ${formatMs(latencyP99Ms)}`);
+    console.log(`Latency max: ${formatMs(latencyMaxMs)}`);
   }
 
   if (failureGroups.size > 0) {
@@ -374,6 +453,22 @@ async function main() {
       "Note: openai mode includes the real upstream model dependency, so failures or latency spikes may come from provider-side limits as much as from Memora itself.",
     );
   }
+
+  return {
+    label,
+    options,
+    totalRequests,
+    successes: successes.length,
+    failures: failures.length,
+    fallbackCount,
+    wallTimeMs: totalDurationMs,
+    throughputReqPerSecond: throughput,
+    latencyP50Ms,
+    latencyP95Ms,
+    latencyP99Ms,
+    latencyMaxMs,
+    failureBreakdown: Object.fromEntries(failureGroups.entries()),
+  };
 }
 
 main()

@@ -16,7 +16,26 @@ import { Card, CardTitle } from "@/components/ui/card";
 type Health = {
   timestamp: string;
   db: { ok: boolean; configured: boolean; latencyMs: number | null; error?: string };
+  dbRuntime: {
+    configured: boolean;
+    protocol: string | null;
+    host: string | null;
+    hostKind: "pooler" | "direct" | "unknown" | null;
+    database: string | null;
+    pooled: boolean | null;
+    connectionLimit: number | null;
+    sslMode: string | null;
+  };
   redis: { ok: boolean; configured: boolean; latencyMs: number | null; error?: string };
+  generationCapacity: {
+    configured: boolean;
+    enabled: boolean;
+    limit: number | null;
+    ttlSeconds: number | null;
+    inFlight: number | null;
+    saturated: boolean | null;
+    error?: string;
+  };
   metrics: {
     usersTotal: number | null;
     usersToday: number | null;
@@ -122,6 +141,44 @@ export function AdminHealthView() {
           configured={data?.redis.configured ?? true}
           latencyMs={data?.redis.latencyMs ?? null}
           errorMsg={data?.redis.error}
+        />
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4">
+        <Metric
+          label="DB host mode"
+          value={
+            data?.dbRuntime.hostKind
+              ? data.dbRuntime.hostKind === "pooler"
+                ? "pooler"
+                : data.dbRuntime.hostKind
+              : null
+          }
+          accent
+        />
+        <Metric
+          label="DB connection limit"
+          value={data?.dbRuntime.connectionLimit}
+        />
+        <Metric
+          label="Quiz slots in flight"
+          value={
+            data?.generationCapacity.inFlight != null && data?.generationCapacity.limit != null
+              ? `${data.generationCapacity.inFlight}/${data.generationCapacity.limit}`
+              : data?.generationCapacity.configured
+                ? "–"
+                : "disabled"
+          }
+        />
+        <Metric
+          label="Generation gate"
+          value={
+            data?.generationCapacity.enabled
+              ? data.generationCapacity.saturated
+                ? "saturated"
+                : "active"
+              : "disabled"
+          }
         />
       </div>
 
