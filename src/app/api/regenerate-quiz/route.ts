@@ -4,6 +4,7 @@ import { getSessionUserId } from "@/lib/auth";
 import { createAIClient } from "@/lib/ai";
 import { generateQuizPayload } from "@/lib/quiz-generator";
 import { acquireQuizGenerationLease } from "@/lib/quiz-generation-capacity";
+import { recordQuizGenerationTelemetry } from "@/lib/quiz-generation-telemetry";
 import { z } from "zod";
 import { isQuestionCount } from "@/lib/schemas/quiz";
 import { ratelimitGenerateQuiz } from "@/lib/rate-limit";
@@ -17,6 +18,7 @@ const bodySchema = z.object({
 });
 
 export async function POST(req: Request) {
+  const requestStartedAt = Date.now();
   const userId = await getSessionUserId();
   if (!userId) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
 
@@ -61,6 +63,12 @@ export async function POST(req: Request) {
 
   const lease = await acquireQuizGenerationLease();
   if (!lease.acquired) {
+    await recordQuizGenerationTelemetry({
+      totalMs: Date.now() - requestStartedAt,
+      aiMs: null,
+      persistMs: null,
+      outcome: "capacity_rejected",
+    });
     return NextResponse.json(
       {
         error: "Quiz generation is busy right now. Please try again in a moment.",
@@ -75,8 +83,11 @@ export async function POST(req: Request) {
     );
   }
 
+  let aiMs: number | null = null;
+  let persistMs: number | null = null;
   try {
     const ai = createAIClient();
+    const aiStartedAt = Date.now();
     const { payload, usedFallback, fallbackReason } = await generateQuizPayload(
       ai,
       {
@@ -86,9 +97,11 @@ export async function POST(req: Request) {
         questionCount: prev.questionCount,
       },
     );
+    aiMs = Date.now() - aiStartedAt;
 
     let quizRequest;
     try {
+      const persistStartedAt = Date.now();
       quizRequest = await createQuizRequestWithQuota(userId, {
         title: prev.title,
         summaryText: prev.summaryText,
@@ -105,7 +118,14 @@ export async function POST(req: Request) {
           explanation: q.explanation,
         })),
       });
+      persistMs = Date.now() - persistStartedAt;
     } catch (err) {
+      await recordQuizGenerationTelemetry({
+        totalMs: Date.now() - requestStartedAt,
+        aiMs,
+        persistMs,
+        outcome: "persist_error",
+      });
       if (err instanceof QuotaExceededError) {
         return NextResponse.json({ error: err.message }, { status: 429 });
       }
@@ -123,6 +143,12 @@ export async function POST(req: Request) {
       return { id: row.id, question: row.question, options, correctIndex: row.correctIndex, explanation: row.explanation };
     });
 
+    await recordQuizGenerationTelemetry({
+      totalMs: Date.now() - requestStartedAt,
+      aiMs,
+      persistMs,
+      outcome: usedFallback ? "fallback" : "success",
+    });
     return NextResponse.json({
       quizRequestId: quizRequest.id,
       topic: quizRequest.topic,
@@ -130,6 +156,14 @@ export async function POST(req: Request) {
       usedFallback,
       ...(usedFallback && fallbackReason ? { fallbackReason } : {}),
     });
+  } catch (error) {
+    await recordQuizGenerationTelemetry({
+      totalMs: Date.now() - requestStartedAt,
+      aiMs,
+      persistMs,
+      outcome: "provider_error",
+    });
+    throw error;
   } finally {
     await lease.release();
   }

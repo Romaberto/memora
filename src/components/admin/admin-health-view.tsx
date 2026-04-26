@@ -36,6 +36,19 @@ type Health = {
     saturated: boolean | null;
     error?: string;
   };
+  generationTelemetry: {
+    configured: boolean;
+    last5mCount: number | null;
+    successCount: number | null;
+    fallbackCount: number | null;
+    capacityRejectedCount: number | null;
+    persistErrorCount: number | null;
+    providerErrorCount: number | null;
+    avgTotalMs: number | null;
+    avgAiMs: number | null;
+    avgPersistMs: number | null;
+    p95TotalMs: number | null;
+  };
   metrics: {
     usersTotal: number | null;
     usersToday: number | null;
@@ -180,6 +193,49 @@ export function AdminHealthView() {
               : "disabled"
           }
         />
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4">
+        <Metric
+          label="Gen avg total · 5m"
+          value={
+            data?.generationTelemetry.avgTotalMs != null
+              ? `${Math.round(data.generationTelemetry.avgTotalMs)} ms`
+              : null
+          }
+          accent
+        />
+        <Metric
+          label="Gen avg AI · 5m"
+          value={
+            data?.generationTelemetry.avgAiMs != null
+              ? `${Math.round(data.generationTelemetry.avgAiMs)} ms`
+              : null
+          }
+        />
+        <Metric
+          label="Gen avg persist · 5m"
+          value={
+            data?.generationTelemetry.avgPersistMs != null
+              ? `${Math.round(data.generationTelemetry.avgPersistMs)} ms`
+              : null
+          }
+        />
+        <Metric
+          label="Gen p95 total · 5m"
+          value={
+            data?.generationTelemetry.p95TotalMs != null
+              ? `${Math.round(data.generationTelemetry.p95TotalMs)} ms`
+              : null
+          }
+        />
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4">
+        <Metric label="Gen reqs · 5m" value={data?.generationTelemetry.last5mCount} accent />
+        <Metric label="Gen success · 5m" value={data?.generationTelemetry.successCount} />
+        <Metric label="Gate rejects · 5m" value={data?.generationTelemetry.capacityRejectedCount} />
+        <Metric label="Persist errs · 5m" value={data?.generationTelemetry.persistErrorCount} />
       </div>
 
       {/* Traffic counters */}

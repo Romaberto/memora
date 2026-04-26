@@ -4,6 +4,7 @@ import { createAIClient } from "@/lib/ai";
 import { generateQuizPayload, buildPromptBundle } from "@/lib/quiz-generator";
 import { generateQuizBodySchema } from "@/lib/schemas/quiz";
 import { acquireQuizGenerationLease } from "@/lib/quiz-generation-capacity";
+import { recordQuizGenerationTelemetry } from "@/lib/quiz-generation-telemetry";
 import {
   getUserSubscription,
   canGenerateQuiz,
@@ -19,6 +20,7 @@ export const runtime = "nodejs";
 export const maxDuration = 120;
 
 export async function POST(req: Request) {
+  const requestStartedAt = Date.now();
   const userId = await getSessionUserId();
   if (!userId) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
 
@@ -116,6 +118,12 @@ export async function POST(req: Request) {
 
   const lease = await acquireQuizGenerationLease();
   if (!lease.acquired) {
+    await recordQuizGenerationTelemetry({
+      totalMs: Date.now() - requestStartedAt,
+      aiMs: null,
+      persistMs: null,
+      outcome: "capacity_rejected",
+    });
     return NextResponse.json(
       {
         error: "Quiz generation is busy right now. Please try again in a moment.",
@@ -131,7 +139,10 @@ export async function POST(req: Request) {
   }
 
   const ai = createAIClient();
+  let aiMs: number | null = null;
+  let persistMs: number | null = null;
   try {
+    const aiStartedAt = Date.now();
     const { payload, rawModelJson, usedFallback, fallbackReason } =
       await generateQuizPayload(ai, {
         title,
@@ -139,6 +150,7 @@ export async function POST(req: Request) {
         notes,
         questionCount,
       });
+    aiMs = Date.now() - aiStartedAt;
 
     // Atomic create-with-quota: re-checks the daily count inside a SERIALIZABLE
     // transaction so two concurrent requests can't both slip past the limit.
@@ -146,6 +158,7 @@ export async function POST(req: Request) {
     // tab/request between the soft pre-check above and now.
     let quizRequest;
     try {
+      const persistStartedAt = Date.now();
       quizRequest = await createQuizRequestWithQuota(userId, {
         title: title?.trim() || null,
         summaryText: summaryText.trim(),
@@ -162,7 +175,14 @@ export async function POST(req: Request) {
           explanation: q.explanation,
         })),
       });
+      persistMs = Date.now() - persistStartedAt;
     } catch (err) {
+      await recordQuizGenerationTelemetry({
+        totalMs: Date.now() - requestStartedAt,
+        aiMs,
+        persistMs,
+        outcome: "persist_error",
+      });
       if (err instanceof QuotaExceededError) {
         return NextResponse.json(
           { error: err.message, dailyLimitReached: true },
@@ -201,7 +221,21 @@ export async function POST(req: Request) {
       if (rawModelJson) response.debugRawModelJson = rawModelJson;
     }
 
+    await recordQuizGenerationTelemetry({
+      totalMs: Date.now() - requestStartedAt,
+      aiMs,
+      persistMs,
+      outcome: usedFallback ? "fallback" : "success",
+    });
     return NextResponse.json(response);
+  } catch (error) {
+    await recordQuizGenerationTelemetry({
+      totalMs: Date.now() - requestStartedAt,
+      aiMs,
+      persistMs,
+      outcome: "provider_error",
+    });
+    throw error;
   } finally {
     await lease.release();
   }

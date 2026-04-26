@@ -17,6 +17,7 @@ import { getSessionUserId } from "@/lib/auth";
 import { isAdmin } from "@/lib/admin";
 import { getDbRuntimeConfig } from "@/lib/db-runtime-config";
 import { getQuizGenerationCapacitySnapshot } from "@/lib/quiz-generation-capacity";
+import { getQuizGenerationTelemetrySnapshot } from "@/lib/quiz-generation-telemetry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -106,6 +107,7 @@ export async function GET() {
     db,
     redis,
     generationCapacity,
+    generationTelemetry,
     usersTotal,
     quizzesToday,
     quizzes5m,
@@ -122,6 +124,7 @@ export async function GET() {
     pingDb(),
     pingRedis(),
     getQuizGenerationCapacitySnapshot(),
+    getQuizGenerationTelemetrySnapshot(),
     safeCount(prisma.user.count({ where: { NOT: { email: "guest@memorize.local" } } })),
     safeCount(prisma.quizRequest.count({ where: { ...realQuiz, createdAt: { gte: startOfDay } } })),
     safeCount(prisma.quizRequest.count({ where: { ...realQuiz, createdAt: { gte: fiveMinAgo } } })),
@@ -172,6 +175,7 @@ export async function GET() {
     dbRuntime: getDbRuntimeConfig(),
     redis,
     generationCapacity,
+    generationTelemetry,
     metrics: {
       usersTotal,
       usersToday,
