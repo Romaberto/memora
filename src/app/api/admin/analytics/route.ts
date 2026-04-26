@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import prisma from "@/lib/db";
 import { getSessionUserId } from "@/lib/auth";
 import { isAdmin } from "@/lib/admin";
+import { getGa4VisitorsSeries } from "@/lib/ga4-data";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -130,7 +131,7 @@ export async function GET(request: NextRequest) {
 
   const range = resolveRange(request.nextUrl.searchParams);
 
-  const [signups, quizzesGenerated, sessionsPlayed] = await Promise.all([
+  const [signups, quizzesGenerated, sessionsPlayed, visitors] = await Promise.all([
     daySeries(
       "User",
       range.from,
@@ -144,9 +145,11 @@ export async function GET(request: NextRequest) {
       Prisma.sql`AND t."usedFallback" = false`,
     ),
     daySeries("QuizSession", range.from, range.to),
+    getGa4VisitorsSeries({
+      from: formatUtcYmd(range.from),
+      to: formatUtcYmd(range.to),
+    }),
   ]);
-
-  const gaTrackingEnabled = Boolean(process.env.NEXT_PUBLIC_GA_ID);
 
   return NextResponse.json({
     from: formatUtcYmd(range.from),
@@ -165,14 +168,20 @@ export async function GET(request: NextRequest) {
       total: totalCount(sessionsPlayed),
       series: sessionsPlayed,
     },
-    visitors: {
-      available: false,
-      trackingEnabled: gaTrackingEnabled,
-      total: null,
-      series: [] as SeriesPoint[],
-      reason: gaTrackingEnabled
-        ? "GA tracking is enabled, but no server-side analytics data source is configured for historical visitor charts yet."
-        : "No visitor analytics source is configured yet.",
-    },
+    visitors: visitors.ok
+      ? {
+          available: true,
+          trackingEnabled: true,
+          total: visitors.total,
+          series: visitors.series,
+          reason: "",
+        }
+      : {
+          available: false,
+          trackingEnabled: visitors.trackingEnabled,
+          total: visitors.total,
+          series: visitors.series,
+          reason: visitors.reason,
+        },
   });
 }

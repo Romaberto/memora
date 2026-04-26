@@ -624,7 +624,20 @@ export function AdminHealthView() {
             }))}
           />
 
-          <VisitorsPlaceholderCard visitors={analytics?.visitors ?? null} />
+          {analytics?.visitors.available ? (
+            <TrendCard
+              title="Website visitors over time"
+              subtitle="Daily active GA4 visitors in the selected range."
+              total={analytics.visitors.total}
+              unit="visitors"
+              points={analytics.visitors.series.map((point) => ({
+                label: formatDayLabel(point.date),
+                count: point.count,
+              }))}
+            />
+          ) : (
+            <VisitorsPlaceholderCard visitors={analytics?.visitors ?? null} />
+          )}
         </div>
       </Card>
     </div>
@@ -746,7 +759,7 @@ function VisitorsPlaceholderCard({
   visitors: Analytics["visitors"] | null;
 }) {
   const title = visitors?.trackingEnabled
-    ? "Client-side tracking is on"
+    ? "GA4 tracking is on"
     : "No visitor source yet";
 
   return (
@@ -767,7 +780,7 @@ function VisitorsPlaceholderCard({
         <p className="text-base font-semibold text-slate-900">{title}</p>
         <p className="mt-2 text-sm leading-6 text-slate-500">
           {visitors?.reason ??
-            "Add a historical visitor analytics source and this slot can use the same controls as the other charts."}
+            "Add a GA4 property reader and this slot can use the same controls as the other charts."}
         </p>
       </div>
     </div>
